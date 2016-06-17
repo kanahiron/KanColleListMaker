@@ -1,7 +1,7 @@
 /*
 * SoftWareName(Jp)	: 艦これ一覧めいかー
 * SoftWareName(En)	: KanColleListMaker
-* Version			: 1.2.2
+* Version			: 1.2.3.2
 * Author			: kanahiron
 * License			: MIT
 * Copyright(C) 2014 kanahiron
@@ -59,7 +59,7 @@
 #include "makelistmodule_Ver6.as"
 
 #pack "data.png"
-#packopt name "艦これ一覧めいかー Ver1_2_2"
+#packopt name "艦これ一覧めいかー Ver1_2_3_2"
 #packopt hide 1
 
 #define HOTKEYID	7789
@@ -97,7 +97,7 @@
 	tempstr = ""
 	
 	dim memberlistxy,2
-	dim data,8,5,2
+	dim data,8,7,2
 	dim bc,50
 	dim dd,4,2
 	dim mesxy,2
@@ -132,7 +132,7 @@
 	sdim hotkeystr_temp
 	sdim savelogtext,1024
 	cellnum(0,0) = 6,4
-	cellnum(0,1) = 5,2
+	cellnum(0,1) = 5,5
 	ecdd(0,0) = 0,38,194,138
 	ecdd(0,1) = 0,176,228,182
 	erasecell(0,0) = 6,4
@@ -164,8 +164,8 @@
 	gosub *disinfoinit
 	
 	
-	buffer 12,510,270
-	font "メイリオ",30,1
+	buffer 12,610,360
+	font "メイリオ",34,1
 	string = "第一艦隊　 　1\n　　　　 　　2\n　　　　　 　3\n　　　　　　 4\n　　　　　 　5\n　　　　 　　6"
 	mref BMSCR, 67
 	x = ginfo_cx+10
@@ -184,7 +184,7 @@
 	color 255,0,0
 	pos x, y
 	mes string
-	x = ginfo_cx+260
+	x = ginfo_cx+310
 	y = y2
 	string = "第二艦隊　 　1\n　　　　　 　2\n　　　 　　　3\n　　　 　　　4\n　　　　 　　5\n　　 　　　　6"
 	color 255,255,255
@@ -195,7 +195,25 @@
 	loop
 	color 0,0,255
 	pos x, y
-	mes string 
+	mes string
+	
+	font "メイリオ",15,1
+	string = "艦これ一覧めいかー Ver1.2.3.2"
+	mref BMSCR, 67
+	x = 10
+	y = 310
+	y2 = y
+	r = 0.1 * abs(BMSCR.49)
+	n = int(2.0 * M_PI * r)
+	color 245,240,220
+	repeat n
+		rad = 2.0 * M_PI * cnt / n
+		pos x + int(r * cos(rad)), y + int(r * sin(rad))
+		mes string
+	loop
+	color 170,60,70
+	pos x, y
+	mes string
 	
 	
 	buffer 10,disinfo(2),disinfo(3)
@@ -330,7 +348,7 @@
 		}
 	
 		if mode = 2{	
-			if (lparam = sosukach) | (lparam = sosuch) | (lparam = sokach) | (lparam = tuika1ch) | (lparam = tuika2ch) | (lparam = rengoumodech) {
+			if (lparam = sosukach) | (lparam = sosuch) | (lparam = sokach) | (lparam = tuika1ch) | (lparam = tuika2ch) | (lparam = tuika3ch) | (lparam = rengoumodech) {
 				gosub *listchange
 			}
 		}
@@ -414,6 +432,8 @@ return
 		tuika1 = stat & 0x01
 		sendmsg tuika2ch, $F2
 		tuika2 = stat & 0x01
+		sendmsg tuika3ch, $F2
+		tuika3 = stat & 0x01
 	
 		sendmsg rengoumodech, $F2
 		rengoumode = stat & 0x01
@@ -436,6 +456,8 @@ return
 		dd(0,1) = capx,capy,w,h
 		cellratio = 1.0*h/w
 	
+	
+		gosub *draw
 
 		if sosuka | soka{
 			if sosuf = 1{
@@ -483,8 +505,6 @@ return
 	sscapiid = stat
 	mesy+=22
 	
-	
-	
 	if manualpos {
 		if manualpos {
 			manualposf = 0
@@ -507,9 +527,7 @@ return
 		rdposyiid = stat
 		mesy+=25
 	}
-		
-
-		
+	
 	objsize 150-(((yabumiautoupload = 1) & (availableyabumi = 1))*25),30
 	pos 0,mesy
 	button gosub "SSをキャプチャする",*sscaptcha
@@ -540,7 +558,9 @@ return
 	
 	objsize 175,20
 	pos 5,mesy
+	autosearch = 1
 	chkbox "座標自動検索",autosearch:mesy+=20
+	objenable stat,0
 	pos 5,mesy
 	chkbox "提督名と司令部Lvを隠す",hidename:mesy+=20
 	
@@ -622,7 +642,7 @@ return
 	
 		mesy = mesy+2
 		pos 5,mesy
-		chkbox "連合艦隊の区切線を追加",rengoumode:mesy+=20
+		chkbox "連合艦隊用の区切り線",rengoumode:mesy+=20
 		rengoumodecid = stat
 		rengoumodech = objinfo_hwnd(rengoumodecid)
 	
@@ -640,6 +660,12 @@ return
 		tuika2cid = stat
 		tuika2ch = objinfo_hwnd(tuika2cid)
 		sendmsg tuika2ch, $F4, $9
+	
+		pos 10,mesy
+		chkbox "横1縦6",tuika3:mesy+=20
+		tuika3cid = stat
+		tuika3ch = objinfo_hwnd(tuika3cid)
+		sendmsg tuika3ch, $F4, $9
 	
 		pos 5,mesy+1
 		mes "キャプチャ範囲":mesy+=18
@@ -729,6 +755,8 @@ return
 	chkbox "キャプチャのプレビューを有効にする",dispcap:mesy+=20
 	pos 5,mesy
 	chkbox "取得座標を手動で入力できるようにする(暫定)",manualpos:mesy+=20
+	pos 5,mesy
+	chkbox "画像の右下に艦これ一覧めいかーの名前を入れる",senden:mesy+=20
 	pos 5,mesy
 	chkbox "ホットキーでSSをキャプチャする",hotkeycap:mesy+=20
 
@@ -1087,9 +1115,9 @@ return
 		if yubiwa = 1 & kantai = 1 : w = 440 : capx = 360
 		if yubiwa = 1 & kantai = 0 : w = 408 : capx = 392
 		if yubiwa = 0 & kantai = 1 : w = 415 : capx = 360
-		if lvname = 1:w = 190: capx = 392:h = 279
 		if page = 0:h = 279
 		if page = 1:h = 315
+		if lvname = 1:w = 190: capx = 392:h = 279
 		capy = 154
 	} else {
 		if sosuka {
@@ -1125,28 +1153,78 @@ return
 		loop
 	loop
 		
-	if rengoumode = 1{
+	if (rengoumode=1) & (listmode=1){
 		if tuika1 {
-				buffer 15,w*yoko+3,h*tate
-				color 32,32,192
-				boxf
-				pos 0,0
-				gcopy 2,0,0,w*2,h*tate
-				pos w*2+3,0
-				gcopy 2,w*2,0,(w*yoko)-(w*2),h*tate
+			if sosuka | soka{
+				gsel 2
+				gmode 2
+				repeat 12
+					xcnt = (cnt/6)*2+cnt\2
+					ycnt = (cnt\6)/2
+					pos 200+w*xcnt,h*ycnt
+					gcopy 12,10+((cnt/6)*300),(cnt\6)*51,300,51
+				loop
+			}
+				
+			buffer 15,w*yoko+3,h*tate
+			color 32,32,192
+			boxf
+			pos 0,0
+			gcopy 2,0,0,w*2,h*tate
+			pos w*2+3,0
+			gcopy 2,w*2,0,(w*yoko)-(w*2),h*tate
 				
 		}
 		if tuika2 {
-				buffer 15,w*yoko,h*tate+3
-				color 32,32,192
-				boxf
-				pos 0,0
-				gcopy 2,0,0,w*yoko,h
-				pos 0,h+3
-				gcopy 2,0,h,w*yoko,h*(tate-1)
+	
+			if sosuka | soka {
+				gsel 2
+				gmode 2
+				repeat 12
+					xcnt = cnt\6
+					ycnt = cnt/6
+					pos 200+w*xcnt,h*ycnt
+					gcopy 12,10+((cnt/6)*300),(cnt\6)*51,300,51
+				loop
+			}
+			
+			buffer 15,w*yoko,h*tate+3
+			color 32,32,192
+			boxf
+			pos 0,0
+			gcopy 2,0,0,w*yoko,h
+			pos 0,h+3
+			gcopy 2,0,h,w*yoko,h*(tate-1)
+		}
+		if tuika3 {
+	
+			if sosuka | soka {
+				gsel 2
+				gmode 2
+				repeat 12
+					xcnt = cnt/6
+					ycnt = cnt\6
+					pos 200+w*xcnt,h*ycnt
+					gcopy 12,10+((cnt/6)*300),(cnt\6)*51,300,51
+				loop
+			}
+			
+			buffer 15,w*yoko+3,h*tate
+			color 32,32,192
+			boxf
+			pos 0,0
+			gcopy 2,0,0,w,h*tate
+			pos w+3,0
+			gcopy 2,w,0,w*(yoko-1),h*tate
 		}
 	}
-
+	
+	if senden & (listmode=1) & (sosuka|soka){
+		gmode 2
+		pos ginfo_winx-225,ginfo_winy-30
+		gcopy 12,10,310,220,30
+	}
+		
 	savename = ""
 	if drawcount != 0{
 		repeat
@@ -1176,7 +1254,7 @@ return
 	
 	dim mxy,2
 	dim mxy_,2
-	dim data,8,5,2
+	dim data,8,7,2
 	dim bc,2
 	dim dmxy,2
 	bc(0) = 20,200
@@ -1250,6 +1328,16 @@ return
 					}
 				loop
 			}
+			if tuika3 {
+				repeat
+					xcnt = cnt/6
+					ycnt = cnt\6
+					if data(xcnt,ycnt,listmode) = 0{
+						dmxy(0) = xcnt, ycnt
+						break
+					}
+				loop
+			}
 		} else {
 			dmxy(0) = mousex/cellsize(0,listmode) , mousey/cellsize(1,listmode)
 		}
@@ -1297,40 +1385,13 @@ return
 	repeat cellnum(1,listmode)+1
 		ycnt = cnt
 		repeat cellnum(0,listmode)+1
-			if data(cnt,ycnt,listmode) >= 10{
+			if data(cnt,ycnt,listmode) >= 20{
 				pos cnt*cellsize(0,listmode),ycnt*cellsize(1,listmode)
 				gzoom cellsize(0,listmode),cellsize(1,listmode),data(cnt,ycnt,listmode),dd(0,listmode),dd(1,listmode),dd(2,listmode),dd(3,listmode),1
 			}
 		loop
 	loop
 	
-	/*
-	screen 13,cellsize(0,listmode)/2,0.18*(cellsize(0,listmode)/2)
-	gmode 2,250,45
-	if rengoumode {
-		if tuika1 {
-			repeat 12
-				xcnt = (cnt/6)*2+cnt\2
-				ycnt = (cnt\6)/2
-				buffer 13
-				gzoom cellsize(0,listmode)/2,0.18*(cellsize(0,listmode)/2),12, (cnt/6)*250 , (cnt\6)*45,250,45
-				gsel 1
-				gmode 2
-				pos xcnt*cellsize(0,listmode)+(cellsize(0,listmode)/2),ycnt*cellsize(1,listmode)
-				gcopy 13,cellsize(0,listmode)/2,0.18*(cellsize(0,listmode)/2)
-				
-			loop
-		}
-		if tuika2 {
-			repeat 12
-				xcnt = cnt\6
-				ycnt = cnt/6
-				
-			loop
-		}
-	}
-	*/
-		
 	
 	if (mode = 2) & rengoumode{
 		color 32,32,192
@@ -1339,6 +1400,9 @@ return
 		}
 		if tuika2 {
 			boxf  -1, cellsize(1,listmode)-1, maxscrwh(0)+1, cellsize(1,listmode)+1
+		}
+		if tuika3 {
+			boxf  cellsize(0,listmode)-1, -1, cellsize(0,listmode)+1, maxscrwh(1)+1
 		}
 		color 0,0,0
 		
@@ -1493,13 +1557,13 @@ return
 						autosearch=1
 						hidename=0
 						namecut=0
-						frontrow=0
+						frontrow=1
 						hidelog=0
-						yabumiautoupload=0
+						yabumiautoupload=1
 						othergame=0
-						dispcap=0
+						dispcap=1
 						hotkeycap=1
-						autoaddcaptcha=0
+						autoaddcaptcha=1
 						jpgsave=0
 						jpgquality=90
 						disableseqcap=1
@@ -1514,8 +1578,10 @@ return
 						manualpos=0
 						lvname=0
 						rengoumode=0
+						senden=1
 						tuika1=1
 						tuika2=0
+						tuika3=0
 						sosuka=1
 						sosu=0
 						soka=0
@@ -1548,8 +1614,10 @@ return
 	
 	GetIni "Setting122", "lvname", lvname
 	GetIni "Setting122", "rengoumode", rengoumode
+	GetIni "Setting122", "senden", senden
 	GetIni "Setting122", "tuika1", tuika1
 	GetIni "Setting122", "tuika2", tuika2
+	GetIni "Setting122", "tuika3", tuika3
 	GetIni "Setting122", "sosuka", sosuka
 	GetIni "Setting122", "sosu", sosu
 	GetIni "Setting122", "soka", soka
@@ -1604,9 +1672,9 @@ return
 	if yubiwa = 1 & kantai = 1 : w = 440 : capx = 360
 	if yubiwa = 1 & kantai = 0 : w = 408 : capx = 392
 	if yubiwa = 0 & kantai = 1 : w = 415 : capx = 360
-	if lvname = 1:w = 190: capx = 392
 	if page = 0:h = 279
 	if page = 1:h = 315
+	if lvname = 1:w = 190: capx = 392:h = 279
 	capy = 154
 		
 	dd(0,0) = capx,capy,w,h
@@ -1649,13 +1717,37 @@ return
 	
 	savelogtext = ""
 
+/*
+yubiwa=1
+						kantai=1
+						page=0
+						autosearch=1
+						hidename=0
+						namecut=0
+						frontrow=1
+						hidelog=0
+						yabumiautoupload=1
+						othergame=0
+						dispcap=1
+						hotkeycap=1
+						autoaddcaptcha=1
+						jpgsave=0
+						jpgquality=90
+						disableseqcap=1
+						timersec=0
+						listsavedir=
+						sssavedir=
+						yabumidir=
+						hotkeystr=A___Z
+*/
+
 	if (yubiwa != 0) & (yubiwa != 1):yubiwa = 1
 	WriteIni "Setting", "yubiwa",yubiwa
 
 	if (kantai != 0) & (kantai != 1):kantai = 1
 	WriteIni "Setting", "kantai",kantai
 	
-	if (page != 0) & (page != 1):page = 1
+	if (page != 0) & (page != 1):page = 0
 	WriteIni "Setting", "page",page
 
 	if (autosearch != 0) & (autosearch != 1):autosearch = 1
@@ -1781,14 +1873,20 @@ return
 	if (rengoumode != 0) & (rengoumode != 1):rengoumode=0
 	WriteIni "Setting122", "rengoumode",rengoumode
 	
+	if (rengoumode != 0) & (rengoumode != 1):rengoumode=1
+	WriteIni "Setting122", "senden",senden
+	
 	if (tuika1 != 0) & (tuika1 != 1):tuika1=1
 	WriteIni "Setting122", "tuika1",tuika1
 	if (tuika2 != 0) & (tuika2 != 1):tuika2=0
 	WriteIni "Setting122", "tuika2",tuika2
+	if (tuika3 != 0) & (tuika3 != 1):tuika3=0
+	WriteIni "Setting122", "tuika3",tuika3
 	
-	if (tuika1+tuika2) != 1{
+	if (tuika1+tuika2+tuika3) != 1{
 		tuika1 = 1
 		tuika2 = 0
+		tuika3 = 0
 	}
 	
 	if (sosuka != 0) & (sosuka != 1):sosuka=1
