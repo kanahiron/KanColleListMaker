@@ -1,7 +1,7 @@
 /*
 * SoftWareName(Jp)	: 艦これ一覧めいかー
 * SoftWareName(En)	: KanColleListMaker
-* Version			: 1.2.5.3
+* Version			: 1.3beta1
 * Author			: kanahiron
 * License			: MIT
 * Copyright(C) 2014 kanahiron
@@ -47,6 +47,9 @@
 #func global SetTimer "SetTimer" int,int,int,sptr
 #func global KillTimer "KillTimer" int,int
 
+#uselib "kernel32.dll"
+#cfunc getStrLen
+
 #uselib "winmm.dll"
 #cfunc global timeGetTime "timeGetTime"
 
@@ -54,12 +57,14 @@
 #include "ImageFileModule2.as"
 #include "inimodule.as"
 #include "exdialog.as"
+#include "TsubuyakiSoup_mod.hsp"
+#include "key.hsp"
 
 ;/*
 #include "makelistmodule_Ver6_3.as"
 
 #pack "data2.png"
-#packopt name "艦これ一覧めいかー Ver1_2_5_3"
+#packopt name "艦これ一覧めいかー Ver1_3beta1"
 #packopt hide 1
 
 #define CELLWMAX 8
@@ -67,7 +72,7 @@
 #define HOTKEYID	7789
 #define timerID		100
 #define ctype round(%1) int(strf("%%0.0f", %1))
-#define SOFTNAME "艦これ一覧めいかー Ver1.2.5.3"
+#define SOFTNAME "艦これ一覧めいかー Ver1.3beta1"
 
 	onexit gosub *en_d
 
@@ -135,12 +140,20 @@
 	sdim hotkeystr
 	sdim hotkeystr_temp
 	sdim savelogtext,1024
+	sdim picStack,1024,4
+	sdim tweettext,200
 	cellnum(0,0) = 6,4
 	cellnum(0,1) = 5,5
 	ecdd(0,0) = 0,38,194,138
 	ecdd(0,1) = 0,176,228,182
 	erasecell(0,0) = 6,4
 	erasecell(0,1) = 5,2
+	
+	xass = 171,320,171,320
+	yass = 11,11,106,106
+	twiOrder = 0,0,0,0
+	twiOrdercount = 0
+	
 	bc(0) = 0
 	maxscrwh(0) = int(0.8*ginfo(20)),int(0.8*ginfo(21))
 	mindexxy(0) = 0,0
@@ -195,7 +208,7 @@
 	pos x, y
 	mes string
 
-	x = ginfo_cx+500
+	x = 510
 	string = "第二艦隊　 　1\n　　　　　 　2\n　　　 　　　3\n　　　 　　　4\n　　　　 　　5\n　　 　　　　6"
 	color 255,255,255
 	repeat n
@@ -242,6 +255,20 @@
 	mes "                                         画像を追加してください"
 	mes "セルの画像はウィンドウ外にドラッグで消去できます"
 	
+	screen 19,480,250,2
+	oncmd gosub *twiwindowimage,0x0201
+	objmode 2
+	title "ツイートウィンドウ"
+	font "メイリオ",12
+	pos 10,10
+	mesbox tweettext,150,230,1
+	ttid = stat
+	objsize 300,30
+	pos 170,210
+	font "メイリオ",22
+	button gosub "ツイート",*tweet_
+	tweetbid = stat
+
 	screen 17,,,2
 	
 	buffer 10,disinfo(2),disinfo(3)
@@ -318,6 +345,8 @@
 		gosub *sssetting
 		gsel 0,1+frontrow
 	}
+	
+	gosub *TweetWindow
 
 	listsize1 = 1
 	listsize2 = 0
@@ -370,7 +399,22 @@
 			gosub *option
 		}
 	} else {
-		
+	
+		if mode = 0{
+
+			if (lparam = enabletweetwindowch){
+				sendmsg enabletweetwindowch, $F2
+				enabletweetwindow = stat & 0x01
+				if enabletweetwindow {
+					gsel 19,1+frontrow
+				} else {
+					gsel 19,-1
+				}
+				gsel 0
+	
+			}
+		}
+
 		if mode = 1{	
 			if (lparam = yubiwach) | (lparam = kantaich) | (lparam = pagech) | (lparam = lvnamech) {
 				gosub *listchange
@@ -378,7 +422,7 @@
 		}
 	
 		if mode = 2{	
-			if (lparam = sosukach) | (lparam = sosuch) | (lparam = sokach) | (lparam = tuika1ch) | (lparam = tuika2ch) | (lparam = tuika3ch) | (lparam = rengoumodech) | (lparam = listsize1ch) | (lparam = listsize2ch) {
+			if (lparam = sosukach) | (lparam = sosuch) | (lparam = sokach) | (lparam = tuika1ch) | (lparam = tuika2ch) | (lparam = tuika3ch) | (lparam = tuika4ch) | (lparam = rengoumodech) | (lparam = listsize1ch) | (lparam = listsize2ch) {
 				gosub *listchange
 			}
 		}
@@ -474,6 +518,8 @@ return
 		tuika2 = stat & 0x01
 		sendmsg tuika3ch, $F2
 		tuika3 = stat & 0x01
+		sendmsg tuika4ch, $F2
+		tuika4 = stat & 0x01
 	
 		sendmsg listsize1ch, $F2
 		listsize1 = stat & 0x01
@@ -619,10 +665,13 @@ return
 	
 	objsize 175,20
 	pos 5,mesy
-	chkbox "座標自動検索",autosearch:mesy+=20
+	chkbox "自動座標取得",autosearch:mesy+=20
 	pos 5,mesy
 	chkbox "提督名と司令部Lvを隠す",hidename:mesy+=20
 	hidenamebid = stat
+	chkbox "ツイートウィンドウ表示",enabletweetwindow:mesy+=20
+	enabletweetwindowcid = stat
+	enabletweetwindowch = objinfo_hwnd(enabletweetwindowcid)
 	
 	dispcapy = mesy
 	if dispcap {
@@ -675,7 +724,6 @@ return
 	
 	objsize 175,20
 	
-
 	if listmode = 0{	
 		
 		pos 5,mesy
@@ -719,33 +767,32 @@ return
 		rengoumodech = objinfo_hwnd(rengoumodecid)
 	
 		pos 5,mesy+1
-		mes "自動追加の方法":mesy+=18
+		mes "自動追加の方法":mesy+=20
 	
-		objsize 50,20
-		pos 27,mesy
-		chkbox "",tuika1
+		objsize 70,20
+		
+		pos 7,mesy
+		chkbox "縦3横2",tuika1
 		tuika1cid = stat
 		tuika1ch = objinfo_hwnd(tuika1cid)
 		SetWindowLong tuika1ch, -16, $50000009 | $20000
-	
-		pos 77,mesy
-		chkbox "",tuika2
-		tuika2cid = stat
-		tuika2ch = objinfo_hwnd(tuika2cid)
-		sendmsg tuika2ch, $F4, $9
-	
-		pos 132,mesy
-		chkbox "",tuika3:mesy+=17
+		pos 80,mesy
+		chkbox "縦2横3",tuika4
+		tuika4cid = stat
+		tuika4ch = objinfo_hwnd(tuika4cid)
+		sendmsg tuika4ch, $F4, $9
+		mesy+=20
+		
+		pos 7,mesy
+		chkbox "縦6横1",tuika3
 		tuika3cid = stat
 		tuika3ch = objinfo_hwnd(tuika3cid)
 		sendmsg tuika3ch, $F4, $9
-	
-		pos 10,mesy
-		mes "横2縦3"
-		pos 65,mesy
-		mes "横6縦1"
-		pos 120,mesy
-		mes "縦6横1"
+		pos 80,mesy
+		chkbox "縦1横6",tuika2
+		tuika2cid = stat
+		tuika2ch = objinfo_hwnd(tuika2cid)
+		sendmsg tuika2ch, $F4, $9
 		mesy+=20
 	
 		objsize 175,20
@@ -769,25 +816,7 @@ return
 		chkbox "装備と艦娘の画像",soka:mesy+=21
 		sokacid = stat
 		sokach = objinfo_hwnd(sokacid)
-		sendmsg sokach, $F4, $9
-	/*
-		pos 5,mesy+1
-		mes "リストの大きさ":mesy+=18
-		pos 7,mesy
-		chkbox "標準",listsize1:mesy+=20
-		listsize1cid = stat
-		listsize1ch = objinfo_hwnd(listsize1cid)
-		SetWindowLong listsize1ch, -16, $50000009 | $20000
-	
-		pos 7,mesy
-		chkbox "大きい",tuika2:mesy+=20
-		listsize2cid = stat
-		listsize2ch = objinfo_hwnd(listsize2cid)
-		sendmsg listsize2ch, $F4, $9
-	*/
-		
-
-		
+		sendmsg sokach, $F4, $9		
 	
 	}
 			
@@ -805,6 +834,7 @@ return
 	} else {
 		pos 200,mesy
 	}	
+	
 	button gosub "UP",*yabumiupload
 	yabumibid = stat
 	
@@ -898,7 +928,18 @@ return
 	mes "x0.1秒 (0.1～99.9秒)"
 	pos 150,mesy
 	input timersec,50,20,3:mesy+=20
-
+	
+		a = "連携されていません"
+	
+	pos 5,mesy+2
+	mes "Twitter連携"
+	;pos 100,mesy
+	;mesbox a,150,25,0
+	objsize 250,25
+	pos 100,mesy
+	button gosub "連携する",*twioauth
+	mesy+=25
+	
 	objsize 150,20
 	pos 14,mesy
 	mes "一覧保存先"
@@ -1115,6 +1156,19 @@ return
 			pos 0,dispcapy
 			gzoom 175,105,5,0,0,sscapwh(0),sscapwh(1),1
 		}
+	
+		
+		if (seqcapf = 0) & (mode = 0) {
+			//------------------------------------ほにゃらら
+			i = 3
+			repeat 3
+				PicStack(i) = PicStack(i-1)
+				i--
+			loop
+			PicStack(0) = savenamepath 
+			gosub *TweetWindow
+		}
+		
 	}
 
 	oncmd 1
@@ -1122,93 +1176,124 @@ return
 
 
 *listdrag
-	
-	if ginfo(3) != 1:return	
+
 	onclick 0
 	
-	dragdata = 0
-
-	repeat
-
-		stick sti,256
-		if sti = 256{
+	if ginfo(3) = 1 {
 	
-			//mxy はドラッグを話した時点の座標
-			//mxy_ はドラッグ開始の座標
+		dragdata = 0
+		repeat
+			stick sti,256
+			if sti = 256{
+				//mxy はドラッグを話した時点の座標
+				//mxy_ はドラッグ開始の座標
+				mxy(0) = limit(kmmousex/cellsize(0,listmode),0,cellnum(0,listmode)) ,limit(kmmousey/cellsize(1,listmode),0,cellnum(1,listmode))
+				if (data(mxy(0),mxy(1),listmode)) >= 100 & cliflag = 0{				
+					cliflag = 1
+					mxy_(0) = mxy(0),mxy(1)
+					mindexxy(0) = (mousex-(mxy_(0)*(cellsize(0,listmode)-1))),(mousey-(mxy_(1)*(cellsize(1,listmode)-1)))				
+					gsel 4
+					pos 0,0
+					gcopy 1,0,0,maxscrwh(0),maxscrwh(1)
+					gsel 3
+					pos 0,0
+					gzoom cellsize(0,listmode),cellsize(1,listmode),data(mxy_(0),mxy_(1),listmode),dd(0,listmode),dd(1,listmode),dd(2,listmode),dd(3,listmode),1
+					gsel 1,0
+				}
 			
-			mxy(0) = limit(kmmousex/cellsize(0,listmode),0,cellnum(0,listmode)) ,limit(kmmousey/cellsize(1,listmode),0,cellnum(1,listmode))
-
-			if (data(mxy(0),mxy(1),listmode)) >= 100 & cliflag = 0{
-				
-				cliflag = 1
-				mxy_(0) = mxy(0),mxy(1)
-				mindexxy(0) = (mousex-(mxy_(0)*(cellsize(0,listmode)-1))),(mousey-(mxy_(1)*(cellsize(1,listmode)-1)))
-				
-				gsel 4
-				pos 0,0
-				gcopy 1,0,0,maxscrwh(0),maxscrwh(1)
-	
-				gsel 3
-				pos 0,0
-				gzoom cellsize(0,listmode),cellsize(1,listmode),data(mxy_(0),mxy_(1),listmode),dd(0,listmode),dd(1,listmode),dd(2,listmode),dd(3,listmode),1
-
-				gsel 1,0
 			}
 		
-		}
-	
-		if cliflag = 1{
-			redraw 0
-			pos 0,0
-			gcopy 4,0,0,maxscrwh(0),maxscrwh(1)
-			gmode 3,cellsize(0,listmode),cellsize(1,listmode),100
-			pos mousex-mindexxy(0),mousey-mindexxy(1)
-			gcopy 3,0,0,cellsize(0,listmode),cellsize(1,listmode)
-			gmode 0
-			redraw 1
-		}
-		
-		if sti = 0 & cliflag = 1{
-	
-			//-----
-			if (kmmousex < 0) | (kmmousex > scrsize(0,listmode)) | (kmmousey < 0) | (kmmousey > scrsize(1,listmode)){
-				//マウス座標がウィンドウ外のとき
-				if data(mxy_(0),mxy_(1),listmode) >= 100{
-					bc( data(mxy_(0),mxy_(1),listmode) - 100 ) = 0
-					data(mxy_(0),mxy_(1),listmode) = 0
+			if cliflag = 1{
+				redraw 0
+				pos 0,0
+				gcopy 4,0,0,maxscrwh(0),maxscrwh(1)
+				gmode 3,cellsize(0,listmode),cellsize(1,listmode),100
+				pos mousex-mindexxy(0),mousey-mindexxy(1)
+				gcopy 3,0,0,cellsize(0,listmode),cellsize(1,listmode)
+				gmode 0
+				redraw 1
+			}
+			
+			if sti = 0 & cliflag = 1{
+				if (kmmousex < 0) | (kmmousex > scrsize(0,listmode)) | (kmmousey < 0) | (kmmousey > scrsize(1,listmode)){
+					//マウス座標がウィンドウ外のとき
+					if data(mxy_(0),mxy_(1),listmode) >= 100{
+						bc( data(mxy_(0),mxy_(1),listmode) - 100 ) = 0
+						data(mxy_(0),mxy_(1),listmode) = 0
+						gsel 0
+						logmessage = "セル("+mxy_(0)+","+mxy_(1)+")を削除しました"
+						objprm logid,logmessage
+						gsel 1		
+					}
+				} else {
+					temp = data(mxy_(0),mxy_(1),listmode) 
+					data(mxy_(0),mxy_(1),listmode) = data(mxy(0),mxy(1),listmode)
+					data(mxy(0),mxy(1),listmode) = temp
 					gsel 0
-					logmessage = "セル("+mxy_(0)+","+mxy_(1)+")を削除しました"
+					logmessage = "セル("+mxy_(0)+","+mxy_(1)+")をセル("+mxy(0)+","+mxy(1)+")に移動しました"
 					objprm logid,logmessage
 					gsel 1
-					
 				}
-			} else {
-				temp = data(mxy_(0),mxy_(1),listmode) 
-				data(mxy_(0),mxy_(1),listmode) = data(mxy(0),mxy(1),listmode)
-				data(mxy(0),mxy(1),listmode) = temp
-				gsel 0
-				logmessage = "セル("+mxy_(0)+","+mxy_(1)+")をセル("+mxy(0)+","+mxy(1)+")に移動しました"
-				objprm logid,logmessage
-				gsel 1
+		
+				mxy(0) = 0,0
+				mxy_(0) = 0,0
+				temp = 0
+				cliflag = 0
+				gosub *draw
+			}
+		
+			if sti = 0 & cliflag = 0{
+				break
 			}
 	
-			mxy(0) = 0,0
-			mxy_(0) = 0,0
-			temp = 0
-			cliflag = 0
-			
-			gosub *draw
-		}
+			await 16
+		loop
+	}
 	
-		if sti = 0 & cliflag = 0{
-			break
-		}
 
-		await 16
-
-	loop
 	onclick 1
 	
+return
+
+*twiwindowimage
+	oncmd 0
+	
+	if ginfo(24) = 19{
+	
+		nid = ginfo(3)
+		mx = lParam & 0x0000FFFF;         // カーソルx座標
+		my = (lParam >> 16) & 0x0000FFFF;  // カーソルy座標
+	
+		gsel 19
+
+	
+		twiOrderPos = -1
+		repeat 4
+			if (xass(cnt) <= mx) & (mx <= xass(cnt)+144) & (yass(cnt) <= my) & (my <= yass(cnt)+90) {
+				twiOrderPos = cnt
+			}
+		loop
+	
+		if twiOrderPos != -1{
+				
+			if twiOrder(twiOrderPos) = 0{
+				twiOrdercount++
+				twiOrder(twiOrderPos) = twiOrdercount
+			} else {
+				temp = twiOrder(twiOrderPos)
+				twiOrder(twiOrderPos) = 0
+				twiOrdercount--
+				repeat 4
+					if temp <= twiOrder(cnt):twiOrder(cnt)--
+				loop		
+			}
+		}
+
+		gosub *TweetWindow
+	
+		gsel nid
+	}
+	oncmd 1
 return
 
 //一覧作成――――――――――――――――――――――――――――――――――
@@ -1282,7 +1367,7 @@ return
 					ycnt = (cnt\6)/2
 					if data(xcnt,ycnt,listmode) >= 100{
 						pos 205+w*xcnt,h*ycnt+5
-						gcopy 12,10+((cnt/6)*500),(cnt\6)*51,250,51
+						gcopy 12,(cnt/6)*500,(cnt\6)*51,250,51
 					}
 				loop
 			}
@@ -1304,6 +1389,40 @@ return
 			boxf w*4+3,0,w*4+5,h*tate+3
 				
 		}
+	
+		if tuika4 {
+			if sosuka | soka{
+				gsel 2
+				gmode 7
+				repeat 12
+					xcnt = (cnt/6)*3+cnt\3
+					ycnt = (cnt\6)/3
+					if data(xcnt,ycnt,listmode) >= 100{
+						pos 205+w*xcnt,h*ycnt+5
+						gcopy 12,(cnt/6)*500,(cnt\6)*51,250,51
+					}
+				loop
+			}
+	
+			buffer 15,w*yoko+((yoko/4)*3),h*tate+(((tate+1)/2)-1)*3
+			gmode 0
+			
+			pos 0,0
+			gcopy 2,0,0,w*3,h*tate
+			pos w*3+3,0
+			gcopy 2,w*3,0,w*3,h*tate	
+			pos 0,h*2+3
+			gcopy 15,0,h*2,w*6+3,h*4
+			pos 0,h*4+6
+			gcopy 15,0,h*4+3,w*6+3,h*2
+	
+			color 32,32,192
+			boxf w*3,0,w*3+2,h*6+6
+			boxf 0,h*2,w*6+6,h*2+2
+			boxf 0,h*4+3,w*6+6,h*4+5
+				
+		}
+	
 		if tuika2 {
 	
 			if sosuka | soka {
@@ -1314,7 +1433,7 @@ return
 					ycnt = cnt/6
 					if data(xcnt,ycnt,listmode) >= 100{
 						pos 205+w*xcnt,h*ycnt+5
-						gcopy 12,10+((cnt/6)*500),(cnt\6)*51,250,51
+						gcopy 12,(cnt/6)*500,(cnt\6)*51,250,51
 					}
 				loop
 			}
@@ -1339,7 +1458,7 @@ return
 					ycnt = cnt\6
 					if data(xcnt,ycnt,listmode) >= 100{
 						pos 205+w*xcnt,h*ycnt+5
-						gcopy 12,10+((cnt/6)*500),(cnt\6)*51,250,51
+						gcopy 12,(cnt/6)*500,(cnt\6)*51,250,51
 					}
 				loop
 			}
@@ -1380,6 +1499,16 @@ return
 		} else {
 			logmessage = savename+"を保存しました"
 			objprm logid,logmessage
+	
+			//=============
+			i = 3
+			repeat 3
+				PicStack(i) = PicStack(i-1)
+				i--
+			loop
+			PicStack(0) = listsavedir +"\\"+ savename
+			gosub *TweetWindow
+	
 		}
 	
 	} else {
@@ -1442,6 +1571,10 @@ return
 				if tuika1{
 					xcnt = (((cnt\(6*(cellnum(0,listmode)+1)/2))/6)*2)+(cnt\2)
 					ycnt = ((cnt/((cellnum(0,listmode)+1)*3))*3)+((cnt\6)/2)
+				}
+				if tuika4{
+					xcnt = (((cnt\(6*(cellnum(0,listmode)+1)/3))/6)*3)+(cnt\3)
+					ycnt = ((cnt/((cellnum(0,listmode)+1)*2))*2)+((cnt\6)/3)
 				}
 				if tuika2 {
 					xcnt = cnt\6
@@ -1580,6 +1713,15 @@ return
 			boxf  cellsize(0,listmode)*4-1, -1, cellsize(0,listmode)*4+1, maxscrwh(1)+1
 			boxf  cellsize(0,listmode)*5-1, -1, cellsize(0,listmode)*5+1, maxscrwh(1)+1
 		}
+	
+		if tuika4 {
+	
+			boxf  3*cellsize(0,listmode)-1, -1, 3*cellsize(0,listmode)+1, maxscrwh(1)+1
+			boxf  -1, cellsize(1,listmode)*2-1, maxscrwh(0)+1, cellsize(1,listmode)*2+1
+			boxf  -1, cellsize(1,listmode)*4-1, maxscrwh(0)+1, cellsize(1,listmode)*4+1
+
+		}
+		
 		color 0,0,0
 		
 	}
@@ -2095,6 +2237,7 @@ yubiwa=1
 		soka = 0
 	}
 	
+	
 	if savelogtext != ""{
 		savelogtext += "makelist.iniを保存しました"
 		dialog savelogtext
@@ -2152,6 +2295,151 @@ return
 return
 
 
+*twioauth
+	
+		
+	gsel 0,-1
+	screen 18,175,300,2:title SOFTNAME
+	syscolor 15:boxf:color
+	font "メイリオ",13
+	objmode 2
+
+	pos 5,5
+	mes "ブラウザに表示された\nコードを入力し、\nOKを押してください\n"
+	
+	PIN = ""
+	input PIN,100,20
+	
+	button　gosub "OK",*twioauthok
+	
+	gsel 18,2
+	await
+	
+	
+	tCupInit "KanColleListMaker", CONSUMER_KEY, CONSUMER_SECRET, 10
+	
+	address = getAuthorizeAddress()
+	if address != "Error"{
+		exec address,16
+	} else {
+		dialog "認証に失敗しました\nインターネットに繋がっているか確認しもう一度お試しください"
+		gsel 18,-1
+		gsel 0,1+frontrow
+	}
+	
+	pos 5,120
+	mes "\n\n\n\nこの画面及びTwitter認証\nの部分はVer1.3では\nまだ不完全です\n手抜きでごめんなさいm(__)m"
+
+return
+
+*twioauthok
+	
+	userdata = ""
+	ACCESS_TOKEN = ""
+	ACCESS_SECRET = ""
+	
+	publishAccessToken ACCESS_TOKEN,ACCESS_SECRET,userdata,PIN
+	
+	if ACCESS_TOKEN != "" {
+		setAccessToken ACCESS_TOKEN, ACCESS_SECRET		
+	} else {	
+		dialog "認証に失敗しました\nもう一度お試しください"
+	}
+	
+	gsel 18,-1
+	gsel 0,1+frontrow
+	
+return
+
+*TweetWindow
+	
+	nid = ginfo(3)
+
+	gsel 19
+	redraw 0
+	
+	syscolor 15
+	boxf
+
+	syscolor 16
+	pos 170,10
+	// 170 ,10 144x90
+	boxf 170,10,315,101
+	boxf 319,10,464,101
+	boxf 170,105,315,196
+	boxf 319,105,464,196
+	
+	syscolor 15
+	boxf 171,11,314,100
+	boxf 320,11,463,100
+	boxf 171,106,314,195
+	boxf 320,106,463,195
+	color
+	
+	xass = 171,320,171,320
+	yass = 11,11,106,106
+	
+	repeat 4
+		if PicStack(cnt) = "":break
+		buffer 21
+		picload PicStack(cnt)
+		gsel 19
+		pos xass(cnt),yass(cnt)
+		gzoom 144,90,21,0,0,800,480
+	loop
+	
+	
+	repeat 4
+		gmode 2
+		pos xass(cnt),yass(cnt)
+		gcopy 7,0,50+twiOrder(cnt)*90,144,90
+	loop
+	
+	objprm ttid,tweettext
+	
+	gmode 0
+	redraw 1
+	gsel nid,0
+
+return
+
+*tweet_
+	
+	if ACCESS_TOKEN != ""{
+	
+		objenable ttid,0
+		objenable tweetbid,0
+		
+		sdim mediaids,1024
+		sdim tempsdim,256,4
+	
+		count = 0
+		repeat 4
+			if twiOrder(cnt) = count+1 {
+				tempsdim(count) = picStack(cnt)
+				count++
+				continue 0
+			}
+		loop
+
+		media_upload tempsdim,count,mediaids
+		tweet tweettext,"",mediaids
+		
+		repeat 4
+			picStack(cnt) = ""
+		loop
+		tweettext = ""
+		twiOrder = 0,0,0,0
+		twiOrderCount = 0
+		objenable ttid,1
+		objenable tweetbid,1
+	} else {
+		dialog "先にオプションから認証してね"
+	}
+	
+	gosub *TweetWindow
+
+return
 *en_d
 	
 	if wparam = 1{
