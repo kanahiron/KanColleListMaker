@@ -1,15 +1,14 @@
 /*
 * SoftWareName(Jp)	: 一覧作るよ！(艦これ一覧めいかー)
 * SoftWareName(En)	: None(KanColleListMaker)
-* Version			: 1.1
+* Version			: 1.1.2
 * Author			: kanahiron
 * License			: MIT
 * Copyright(C) 2014 kanahiron
 */
-
-
+	
 #include "kmodule.as"
-#include "gdiimagesave.as"
+#include "ImageFileModule.as"
 #include "makelistmodule_Ver3.as"
 
 #uselib "shell32.dll"
@@ -35,7 +34,7 @@
 #define NULL		0
 #define CAPTUREBLT	0x40000000
 
-#packopt name "一覧作るよ！ Ver1_1"
+#packopt name "一覧作るよ！ Ver1_1_2"
 
 	onexit *end_
 
@@ -46,31 +45,31 @@
 	sti = 0
 	gflag = 0
 	cliflag = 0
-	dim data,8,5,2
-	dim bc,2
-	dim dd,6,2
-	dim selx,2
-	dim sely,2
-	dim mesxy,2
-	dim maxscrwh,2
-	dim mindexxy,2
-	dim mxy,2
-	dim mxy_,2
-	dim dmxy,2
+	dim data,8,5,4
+	dim bc,4
+	dim dd,6,4
+	dim selx,4
+	dim sely,4
+	dim mesxy,4
+	dim maxscrwh,4
+	dim mindexxy,4
+	dim mxy,4
+	dim mxy_,4
+	dim dmxy,4
 	dim sscap,4
-	sdim titlemes,2
 	sdim sscapmes,256
 	sdim logmessage,256
-	sdim modemes,3
+	sdim modemes,4
 	sdim stemp
 	selx(0) = 6,4
 	sely(0) = 4,2
 	dd(0,0) = 194,138,387,154,389,279
 	dd(0,1) = 228,182,330,100,455,365
+	dd(0,2) = 0,0,0,0,0,0
 	bc(0) = 10,100
-	maxscrwh(0) = dd(0,group)*(selx(group)+1),dd(1,group)*(sely(group)+1)
+	maxscrwh(0) = dd(0,0)*(selx(0)+1),dd(1,0)*(sely(0)+1)
 	mindexxy(0) = 0,0
-	modemes(0) = "艦娘一覧","攻略編成","SSキャプチャ"
+	modemes(0) = "艦娘一覧","攻略編成","SSキャプチャ","オプション"
 	mxy(0) = 0,0
 	mxy_(0) = 0,0
 	sscapmes = "取得する"
@@ -98,7 +97,7 @@
 	DragAcceptFiles hwnd1, 1
 	oncmd gosub *OnDropFiles, WM_DROPFILES
 	
-	screen 0,250,308:gsel 0,2:title "メイン画面"
+	screen 0,200,308,2:title "メイン画面"
 	hwnd0 = hwnd
 	DragAcceptFiles hwnd0, 1
 	oncmd gosub *OnDropFiles, WM_DROPFILES
@@ -126,6 +125,7 @@
 
 	gsel 0,2
 	clrobj 1
+	color 240,240,240:boxf:color
 	
 	if group = 0{	
 		width 200,180
@@ -178,8 +178,8 @@
 		logid = stat
 	}
 
-	logmessage = strf("%sモード",modemes(group))
-	objprm logid,logmessage
+	;logmessage = strf("%sモード",modemes(group))
+	;objprm logid,logmessage
 	
 	if group = 2:goto *ssmode
 	
@@ -191,13 +191,11 @@
 	repeat
 	
 		stick sti,256
-	
 		if sti = 256{
-			//ドラッグ中処理は続く
 			mxy(0) = mousex/dd(0,group) ,mousey/dd(1,group)
 			
 			if (data(mxy(0),mxy(1),group)) >= 10  & cliflag = 0{
-				//一回しか処理されない
+
 				cliflag = 1
 				mxy_(0) = mxy(0),mxy(1)
 				mindexxy(0) = (mousex-(mxy_(0)*(dd(0,group)-1))),(mousey-(mxy_(1)*(dd(1,group)-1)))
@@ -226,8 +224,7 @@
 		}
 		
 		if sti = 0 & cliflag = 1 {
-			//離した瞬間の処理
-			
+
 			if mxy(0) = selx(group) & mxy(1) = sely(group) {
 				data(mxy_(0),mxy_(1),group) = 0
 			} else {
@@ -338,13 +335,18 @@
 goto *set
 	
 *OnDropFiles
-	
-	oncmd 0
+
 	hdrop = wParam
 	sdim dropfile,260
 	DragQueryFile hdrop, 0, varptr(dropfile), 260
 	DragFinish hdrop
 	if peek(dropfile,0) = '"' : getstr dropfile, dropfile, 1, '"'
+	
+	if ImgF_GetFormat(dropfile) = 0{
+		dropfile = 0
+		gsel 1
+		return
+	}
 
 	if ginfo(24) = 0{
 	
@@ -366,7 +368,7 @@ goto *set
 	bc(group)++
 	data(dmxy(0),dmxy(1),group) = bc(group)
 	buffer bc(group)
-	picload dropfile
+	ImgF_PicloadEx dropfile
 	gsel 1
 	gosub *draw
 	
@@ -380,7 +382,6 @@ goto *set
 	dropfile = ""
 	cliflag = 0
 
-	oncmd 1
 return
 
 *draw
