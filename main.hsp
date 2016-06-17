@@ -1,7 +1,7 @@
 /*
 * SoftWareName(Jp)	: 艦これ一覧めいかー
 * SoftWareName(En)	: KanColleListMaker
-* Version			: 1.2.3.2
+* Version			: 1.2.4
 * Author			: kanahiron
 * License			: MIT
 * Copyright(C) 2014 kanahiron
@@ -56,12 +56,14 @@
 #include "exdialog.as"
 
 ;/*
-#include "makelistmodule_Ver6.as"
+#include "makelistmodule_Ver6_1.as"
 
 #pack "data.png"
-#packopt name "艦これ一覧めいかー Ver1_2_3_2"
+#packopt name "艦これ一覧めいかー Ver1_2_4"
 #packopt hide 1
 
+#define CELLWMAX 8
+#define CELLHMAX 7
 #define HOTKEYID	7789
 #define timerID		100
 #define ctype round(%1) int(strf("%%0.0f", %1))
@@ -95,10 +97,11 @@
 	
 	tempint = 0
 	tempstr = ""
+	currentdir = dir_cur
 	
 	dim memberlistxy,2
-	dim data,8,7,2
-	dim bc,50
+	dim data,CELLWMAX,CELLHMAX,2
+	dim bc,(CELLWMAX*CELLHMAX*2)
 	dim dd,4,2
 	dim mesxy,2
 	dim maxscrwh,2
@@ -137,8 +140,8 @@
 	ecdd(0,1) = 0,176,228,182
 	erasecell(0,0) = 6,4
 	erasecell(0,1) = 5,2
-	bc(0) = 20,200
-	maxscrwh(0) = ginfo(20),ginfo(21)
+	bc(0) = 0
+	maxscrwh(0) = int(0.8*ginfo(20)),int(0.8*ginfo(21))
 	mindexxy(0) = 0,0
 	modemes(0) = "SSキャプチャ","艦娘一覧","攻略編成","オプション"
 	mxy(0) = 0,0
@@ -152,6 +155,8 @@
 	luposy = 0
 	rdposx = 0
 	rdposy = 0
+	intervalsavedir = ""
+	savenamepath = ""
 	
 	
 	scrsize(0,0) = limit(1358,210,round(0.66*maxscrwh(0))),scrsize(0,0)*aspectratio(0)
@@ -162,7 +167,6 @@
 	gosub *iniload
 	gosub *inisave
 	gosub *disinfoinit
-	
 	
 	buffer 12,610,360
 	font "メイリオ",34,1
@@ -198,7 +202,7 @@
 	mes string
 	
 	font "メイリオ",15,1
-	string = "艦これ一覧めいかー Ver1.2.3.2"
+	string = "艦これ一覧めいかー Ver1.2.4"
 	mref BMSCR, 67
 	x = 10
 	y = 310
@@ -217,10 +221,7 @@
 	
 	
 	buffer 10,disinfo(2),disinfo(3)
-	chgbm 32
-	color 255,255,255
-	boxf
-	redraw
+	
 	//手動選択重ね用
 	bgscr 11,disinfo(2),disinfo(3),2
 	hwnd11 = hwnd
@@ -290,7 +291,9 @@
 		gosub *sssetting
 		gsel 0,1+frontrow
 	}
-
+	
+	listsize1 = 1
+	listsize2 = 0
 	stop
 
 *adummy
@@ -348,13 +351,12 @@
 		}
 	
 		if mode = 2{	
-			if (lparam = sosukach) | (lparam = sosuch) | (lparam = sokach) | (lparam = tuika1ch) | (lparam = tuika2ch) | (lparam = tuika3ch) | (lparam = rengoumodech) {
+			if (lparam = sosukach) | (lparam = sosuch) | (lparam = sokach) | (lparam = tuika1ch) | (lparam = tuika2ch) | (lparam = tuika3ch) | (lparam = rengoumodech) | (lparam = listsize1ch) | (lparam = listsize2ch) {
 				gosub *listchange
 			}
 		}
 		
 	}
-	
 	
 	oncmd 1
 return
@@ -435,6 +437,11 @@ return
 		sendmsg tuika3ch, $F2
 		tuika3 = stat & 0x01
 	
+		sendmsg listsize1ch, $F2
+		listsize1 = stat & 0x01
+		sendmsg listsize2ch, $F2
+		listsize2 = stat & 0x01
+	
 		sendmsg rengoumodech, $F2
 		rengoumode = stat & 0x01
 	
@@ -456,8 +463,25 @@ return
 		dd(0,1) = capx,capy,w,h
 		cellratio = 1.0*h/w
 	
+		/*
+		if listsize1 {
+			if rengoumode = 0{
+				cellnum(0,1) = 3,2
+			}
+		} else {
+			if rengoumode = 0{
+				cellnum(0,1) = 5,5
+			}
+		}
+	
+		scrsize(0,1) = cellsize(0,1) * (cellnum(0,1)+1)
+		scrsize(1,1) = cellsize(1,1) * (cellnum(1,1)+1)
+	
+		
 	
 		gosub *draw
+	
+		;*/
 
 		if sosuka | soka{
 			if sosuf = 1{
@@ -480,7 +504,6 @@ return
 		width scrsize(0,1),scrsize(1,1)
 	}
 
-	
 	gosub *draw
 		
 return
@@ -558,9 +581,7 @@ return
 	
 	objsize 175,20
 	pos 5,mesy
-	autosearch = 1
 	chkbox "座標自動検索",autosearch:mesy+=20
-	objenable stat,0
 	pos 5,mesy
 	chkbox "提督名と司令部Lvを隠す",hidename:mesy+=20
 	
@@ -637,31 +658,33 @@ return
 		chkbox "レベルと艦名のみにする",lvname:mesy+=20
 		lvnamecid = stat
 		lvnamech = objinfo_hwnd(lvnamecid)
+		
 	}
 	if listmode = 1{
 	
 		mesy = mesy+2
+	
 		pos 5,mesy
-		chkbox "連合艦隊用の区切り線",rengoumode:mesy+=20
+		chkbox "連合艦隊モード",rengoumode:mesy+=20
 		rengoumodecid = stat
 		rengoumodech = objinfo_hwnd(rengoumodecid)
 	
 		pos 5,mesy+1
 		mes "自動追加の方法":mesy+=18
 	
-		pos 10,mesy
+		pos 7,mesy
 		chkbox "横2縦3",tuika1:mesy+=20
 		tuika1cid = stat
 		tuika1ch = objinfo_hwnd(tuika1cid)
 		SetWindowLong tuika1ch, -16, $50000009 | $20000
 	
-		pos 10,mesy
+		pos 7,mesy
 		chkbox "横6縦1",tuika2:mesy+=20
 		tuika2cid = stat
 		tuika2ch = objinfo_hwnd(tuika2cid)
 		sendmsg tuika2ch, $F4, $9
 	
-		pos 10,mesy
+		pos 7,mesy
 		chkbox "横1縦6",tuika3:mesy+=20
 		tuika3cid = stat
 		tuika3ch = objinfo_hwnd(tuika3cid)
@@ -670,23 +693,40 @@ return
 		pos 5,mesy+1
 		mes "キャプチャ範囲":mesy+=18
 	
-		pos 10,mesy
+		pos 7,mesy
 		chkbox "装備とステータスと艦娘",sosuka:mesy+=20
 		sosukacid = stat
 		sosukach = objinfo_hwnd(sosukacid)
 		SetWindowLong sosukach, -16, $50000009 | $20000
 	
-		pos 10,mesy
+		pos 7,mesy
 		chkbox "装備とステータス",sosu:mesy+=20
 		sosucid = stat
 		sosuch = objinfo_hwnd(sosucid)
 		sendmsg sosuch, $F4, $9
 	
-		pos 10,mesy
+		pos 7,mesy
 		chkbox "装備と艦娘の画像",soka:mesy+=21
 		sokacid = stat
 		sokach = objinfo_hwnd(sokacid)
 		sendmsg sokach, $F4, $9
+	/*
+		pos 5,mesy+1
+		mes "リストの大きさ":mesy+=18
+		pos 7,mesy
+		chkbox "標準",listsize1:mesy+=20
+		listsize1cid = stat
+		listsize1ch = objinfo_hwnd(listsize1cid)
+		SetWindowLong listsize1ch, -16, $50000009 | $20000
+	
+		pos 7,mesy
+		chkbox "大きい",tuika2:mesy+=20
+		listsize2cid = stat
+		listsize2ch = objinfo_hwnd(listsize2cid)
+		sendmsg listsize2ch, $F4, $9
+	*/
+		
+
 		
 	
 	}
@@ -866,7 +906,7 @@ return
 		logmessage = "座標自動取得中です"
 		objprm logid,logmessage:await 
 
-		getkancollewindowposauto2 10,sscap
+		getkancollewindowposauto2 10,sscap,20
 		if stat = -1{
 			if availablecap {
 				dialog "自動座標取得に失敗しました\n前回の座標を残しますか？",2,"確認"
@@ -921,7 +961,6 @@ return
 
 	}
 	
-	
 	if manualpos {
 		objenable sscapbid,1
 	}
@@ -942,6 +981,8 @@ return
 	oncmd 0
 	
 	gsel 0
+	
+	//暫定数値直接入力
 	sscap(0) = luposx
 	sscap(1) = luposy
 	sscap(2) = rdposx
@@ -951,13 +992,15 @@ return
 	if mode = 0{
 		objprm sscapiid,sscapmes
 	}
+	//
 	
 	buffer 5,sscapwh(0),sscapwh(1)
+
 	redraw 0
 	BitBlt hdc, 0, 0, sscapwh(0), sscapwh(1), hdcScreen, sscap(0), sscap(1),SRCCOPY
 	redraw 1
 
-	if (homeport(5) = 1) & (hidename = 1) & (sscapwh(0) = 800) & (sscapwh(1) = 480) {
+	if (homeport(5,20) = 1) & (hidename = 1) & (sscapwh(0) = 800) & (sscapwh(1) = 480) {
 
 		pos 113,0
 		gcopy 7,0,0,163,22
@@ -973,12 +1016,22 @@ return
 	
 	}
 	
+	gsel 5
 	savename = strf("kancolle_%04d%02d%02d-%02d%02d%02d%03d%s",gettime(0),gettime(1),gettime(3),gettime(4),gettime(5),gettime(6),gettime(7),savekind(jpgsave))
-	gdiimagesave sssavedir +"\\"+ savename,jpgquality
+	
+	if seqcapf = 0{
+		savenamepath = sssavedir +"\\"+ savename
+		gdiimagesave sssavedir +"\\"+ savename,jpgquality
+	} else {
+		savenamepath = getpath(sssavedir,32)+"IntervalShots\\"+intervalsavedir+"\\" +savename
+		gdiimagesave getpath(sssavedir,32)+"IntervalShots\\"+intervalsavedir+"\\" +savename,jpgquality
+	}
+	
+	;intervalsavedir
 	
 	gsel 0
 	
-	if kmexist(sssavedir +"\\"+ savename) <= 0{
+	if kmexist(savenamepath) <= 0{
 		logmessage = savename+"の保存に失敗しました"
 		objprm logid,logmessage
 	} else {
@@ -998,11 +1051,16 @@ return
 	
 	if ginfo(3) != 1:return	
 	onclick 0
+	
+	dragdata = 0
 
 	repeat
 
 		stick sti,256
 		if sti = 256{
+	
+			//mxy はドラッグを話した時点の座標
+			//mxy_ はドラッグ開始の座標
 	
 			mxy(0) = mousex/cellsize(0,listmode) ,mousey/cellsize(1,listmode)
 	
@@ -1010,6 +1068,7 @@ return
 				
 				cliflag = 1
 				mxy_(0) = mxy(0),mxy(1)
+				dragdata = data(mxy(0),mxy(1),listmode)
 				mindexxy(0) = (mousex-(mxy_(0)*(cellsize(0,listmode)-1))),(mousey-(mxy_(1)*(cellsize(1,listmode)-1)))
 				
 				gsel 4
@@ -1023,7 +1082,7 @@ return
 				gsel 1,0
 			}
 			
-			if (data(mxy(0),mxy(1),listmode)) >= 10 & cliflag = 0{
+			if (data(mxy(0),mxy(1),listmode)) >= 100 & cliflag = 0{
 				
 				cliflag = 1
 				mxy_(0) = mxy(0),mxy(1)
@@ -1058,17 +1117,24 @@ return
 			if mxy_(0) = erasecell(0,listmode) & mxy_(1) = erasecell(1,listmode) {
 				erasecell(0,listmode) = mxy(0)
 				erasecell(1,listmode) = mxy(1)
-				data(mxy(0),mxy(1),listmode) = 0
+				if data(mxy(0),mxy(1),listmode) >= 100{
+					bc( data(mxy(0),mxy(1),listmode) - 100 ) = 0
+					data(mxy(0),mxy(1),listmode) = 0
+				}
+			} else {
+				if mxy(0) = erasecell(0,listmode) & mxy(1) = erasecell(1,listmode) {
+					if data(mxy_(0),mxy_(1),listmode) >= 100{
+						bc( data(mxy_(0),mxy_(1),listmode) - 100 ) = 0
+						data(mxy_(0),mxy_(1),listmode) = 0
+					}
+				} else {
+					temp = data(mxy_(0),mxy_(1),listmode) 
+					data(mxy_(0),mxy_(1),listmode) = data(mxy(0),mxy(1),listmode)
+					data(mxy(0),mxy(1),listmode) = temp
+				}
+				
 			}
 
-			if mxy(0) = erasecell(0,listmode) & mxy(1) = erasecell(1,listmode) {
-				data(mxy_(0),mxy_(1),listmode) = 0
-			} else {
-				temp = data(mxy_(0),mxy_(1),listmode) 
-				data(mxy_(0),mxy_(1),listmode) = data(mxy(0),mxy(1),listmode)
-				data(mxy(0),mxy(1),listmode) = temp
-			}
-	
 			mxy(0) = 0,0
 			mxy_(0) = 0,0
 			temp = 0
@@ -1165,14 +1231,22 @@ return
 					gcopy 12,10+((cnt/6)*300),(cnt\6)*51,300,51
 				loop
 			}
-				
-			buffer 15,w*yoko+3,h*tate
-			color 32,32,192
-			boxf
+	
+			buffer 15,w*yoko+(3*((yoko/2)+(yoko\2)-1)),h*tate+(3*(tate/4))
+	
 			pos 0,0
 			gcopy 2,0,0,w*2,h*tate
 			pos w*2+3,0
-			gcopy 2,w*2,0,(w*yoko)-(w*2),h*tate
+			gcopy 2,w*2,0,w*2,h*tate
+			pos w*4+6,0
+			gcopy 2,w*4,0,w*2,h*tate
+			pos 0,h*3+3
+			gcopy 15,0,h*3,w*6+6,h*3
+	
+			color 32,32,192
+			boxf 0,h*3,w*6+6,h*3+2
+			boxf w*2,0,w*2+2,h*tate+3
+			boxf w*4+3,0,w*4+5,h*tate+3
 				
 		}
 		if tuika2 {
@@ -1187,14 +1261,15 @@ return
 					gcopy 12,10+((cnt/6)*300),(cnt\6)*51,300,51
 				loop
 			}
-			
-			buffer 15,w*yoko,h*tate+3
+		
+			buffer 15,w*yoko,h*tate+(3*(tate-1))
 			color 32,32,192
 			boxf
-			pos 0,0
-			gcopy 2,0,0,w*yoko,h
-			pos 0,h+3
-			gcopy 2,0,h,w*yoko,h*(tate-1)
+			
+			repeat 6
+				pos 0,(cnt*h)+(cnt*3)
+				gcopy 2,0,h*cnt,w*6,h
+			loop
 		}
 		if tuika3 {
 	
@@ -1208,14 +1283,15 @@ return
 					gcopy 12,10+((cnt/6)*300),(cnt\6)*51,300,51
 				loop
 			}
-			
-			buffer 15,w*yoko+3,h*tate
+		
+			buffer 15,w*yoko+(3*(yoko-1)),h*tate
 			color 32,32,192
 			boxf
-			pos 0,0
-			gcopy 2,0,0,w,h*tate
-			pos w+3,0
-			gcopy 2,w,0,w*(yoko-1),h*tate
+			
+			repeat 6
+				pos (cnt*w)+(cnt*3),0
+				gcopy 2,w*cnt,0,w,h*6
+			loop
 		}
 	}
 	
@@ -1251,13 +1327,9 @@ return
 		objprm logid,logmessage
 	}
 
-	
-	dim mxy,2
-	dim mxy_,2
-	dim data,8,7,2
-	dim bc,2
-	dim dmxy,2
-	bc(0) = 20,200
+
+	dim data,CELLWMAX,CELLHMAX,2
+	dim bc,(CELLWMAX*CELLHMAX*2)
 	
 	gosub *draw
 	
@@ -1265,7 +1337,7 @@ return
 
 //ドロップ処理――――――――――――――――――――――――――――――――――
 *OnDropFiles
-
+	oncmd 0
 	hdrop = wParam
 	sdim dropfile,260
 	DragQueryFile hdrop, 0, varptr(dropfile), 260
@@ -1280,74 +1352,72 @@ return
 	
 	addfilename = dropfile
 	gosub *addcaptcha
-	
+	oncmd 1
 return
 
 *addcaptcha
+	oncmd 0
+	gsel 1,0
 	
-	if listmode = 0 {
-		if (ginfo(24) = 0) | (autoaddcaptchaf = 1) {
-			autoaddcaptchaf = 0
-			
-			dmxy(0) = cellnum(0,listmode),cellnum(1,listmode)
-			
-			repeat (cellnum(1,listmode)+1)*(cellnum(0,listmode)+1)
+	if (ginfo(24) = 1) | (autoaddcaptcha = 0){
+		//直接ドロップされた場合(割り込みがウィンドウ1か自動追加がオフ)
+		xcnt = mousex/cellsize(0,listmode) 
+		ycnt = mousey/cellsize(1,listmode)
+		dmxy(0) = xcnt, ycnt
+		if data(xcnt,ycnt,listmode) >= 100{
+			dmxy(0) = xcnt, ycnt
+			bc(data(xcnt, ycnt,listmode)-100) = 0
+		}
+	} else {
+		//自動追加(割り込みがウィンドウ0か自動追加がオン)
+		repeat
+			if listmode = 0{
 				ycnt = cnt\(cellnum(1,listmode)+1)
 				xcnt = cnt/(cellnum(1,listmode)+1)
-				if data(xcnt,ycnt,listmode) = 0{
-					dmxy(0) = xcnt, ycnt
-					break
+			} else {
+				if tuika1{
+					xcnt = (((cnt\(6*(cellnum(0,listmode)+1)/2))/6)*2)+(cnt\2)
+					ycnt = ((cnt/((cellnum(0,listmode)+1)*3))*3)+((cnt\6)/2)
 				}
-			loop
-		
-		} else {
-			dmxy(0) = mousex/cellsize(0,listmode) , mousey/cellsize(1,listmode)
-		}
-	}
-	
-	if listmode = 1 {
-		if (ginfo(24) = 0) | (autoaddcaptchaf = 1) {
-			
-			if tuika1 {
-				repeat
-					xcnt = (cnt/6)*2+cnt\2
-					ycnt = (cnt\6)/2
-					if data(xcnt,ycnt,listmode) = 0{
-						dmxy(0) = xcnt, ycnt
-						break
-					}
-				loop
-			}
-			if tuika2 {
-				repeat
+				if tuika2 {
 					xcnt = cnt\6
 					ycnt = cnt/6
-					if data(xcnt,ycnt,listmode) = 0{
-						dmxy(0) = xcnt, ycnt
-						break
-					}
-				loop
-			}
-			if tuika3 {
-				repeat
+				}
+				if tuika3{
 					xcnt = cnt/6
 					ycnt = cnt\6
-					if data(xcnt,ycnt,listmode) = 0{
-						dmxy(0) = xcnt, ycnt
-						break
-					}
-				loop
+				}
 			}
-		} else {
-			dmxy(0) = mousex/cellsize(0,listmode) , mousey/cellsize(1,listmode)
-		}
-		
+			xcnt = limit(xcnt,0,cellnum(0,listmode))
+			ycnt = limit(ycnt,0,cellnum(1,listmode))
+			if data(xcnt,ycnt,listmode) = 0{
+				dmxy(0) = xcnt, ycnt
+				break
+			}
+			if (xcnt=cellnum(0,listmode)) & (ycnt=cellnum(1,listmode)){
+				dmxy(0) = xcnt, ycnt
+				bc(data(xcnt, ycnt,listmode)-100) = 0
+				break
+			}
+		loop
+
 	}
+
+	repeat (CELLWMAX*CELLHMAX*2)
+		if bc(cnt) = 0{
+			bc(cnt) = 1
+			bufid = cnt +100
+			break
+		}
+	loop
 	
-	bc(listmode)++
-	data(dmxy(0),dmxy(1),listmode) = bc(listmode)
-	buffer bc(listmode)
-	ImgF_PicloadEx addfilename
+	data(dmxy(0),dmxy(1),listmode) = bufid
+	ImgF_GetPicSize addfilename,picx,pixy
+	
+	buffer bufid,800,480
+	if pixy = 480:pos 0,0
+	if pixy = 450:pos 0,30
+	ImgF_PicloadEx addfilename,1
 
 	gsel 1
 	gosub *draw
@@ -1358,9 +1428,8 @@ return
 	
 	gsel 1
 
-	dmxy(0) = 0,0
 	addfilename = ""
-	
+	oncmd 1
 return
 
 //描画――――――――――――――――――――――――――――――――――
@@ -1385,7 +1454,7 @@ return
 	repeat cellnum(1,listmode)+1
 		ycnt = cnt
 		repeat cellnum(0,listmode)+1
-			if data(cnt,ycnt,listmode) >= 20{
+			if data(cnt,ycnt,listmode) >= 100{
 				pos cnt*cellsize(0,listmode),ycnt*cellsize(1,listmode)
 				gzoom cellsize(0,listmode),cellsize(1,listmode),data(cnt,ycnt,listmode),dd(0,listmode),dd(1,listmode),dd(2,listmode),dd(3,listmode),1
 			}
@@ -1397,12 +1466,23 @@ return
 		color 32,32,192
 		if tuika1 {
 			boxf  2*cellsize(0,listmode)-1, -1, 2*cellsize(0,listmode)+1, maxscrwh(1)+1
+			boxf  4*cellsize(0,listmode)-1, -1, 4*cellsize(0,listmode)+1, maxscrwh(1)+1
+			boxf  -1, cellsize(1,listmode)*3-1, maxscrwh(0)+1, cellsize(1,listmode)*3+1
 		}
 		if tuika2 {
 			boxf  -1, cellsize(1,listmode)-1, maxscrwh(0)+1, cellsize(1,listmode)+1
+			boxf  -1, cellsize(1,listmode)*2-1, maxscrwh(0)+1, cellsize(1,listmode)*2+1
+			boxf  -1, cellsize(1,listmode)*3-1, maxscrwh(0)+1, cellsize(1,listmode)*3+1
+			boxf  -1, cellsize(1,listmode)*4-1, maxscrwh(0)+1, cellsize(1,listmode)*4+1
+			boxf  -1, cellsize(1,listmode)*5-1, maxscrwh(0)+1, cellsize(1,listmode)*5+1
+			
 		}
 		if tuika3 {
 			boxf  cellsize(0,listmode)-1, -1, cellsize(0,listmode)+1, maxscrwh(1)+1
+			boxf  cellsize(0,listmode)*2-1, -1, cellsize(0,listmode)*2+1, maxscrwh(1)+1
+			boxf  cellsize(0,listmode)*3-1, -1, cellsize(0,listmode)*3+1, maxscrwh(1)+1
+			boxf  cellsize(0,listmode)*4-1, -1, cellsize(0,listmode)*4+1, maxscrwh(1)+1
+			boxf  cellsize(0,listmode)*5-1, -1, cellsize(0,listmode)*5+1, maxscrwh(1)+1
 		}
 		color 0,0,0
 		
@@ -1422,6 +1502,14 @@ return
 		objenable sscapiid,0
 		objenable yabumibid,0
 		seqcapf = 1
+	
+		chdir getpath(sssavedir,32)+"IntervalShots"
+		intervalsavedir =  strf("%04d%02d%02d-%02d%02d%02d",gettime(0),gettime(1),gettime(3),gettime(4),gettime(5),gettime(6))
+		if PathIsDirectory(getpath(sssavedir,32)+"IntervalShots\\"+intervalsavedir) = 0 {
+			mkdir intervalsavedir
+		}
+		chdir currentdir
+		
 		gosub *sscaptcha
 	} else {
 		KillTimer hwnd0,timerID
@@ -1573,7 +1661,6 @@ return
 						yabumidir=
 						hotkeystr=A___Z
 						
-						
 						[Setting122]
 						manualpos=0
 						lvname=0
@@ -1650,6 +1737,11 @@ return
 		}
 		WriteIni "Setting", "sssavedir", sssavedir
 	}
+	
+	if PathIsDirectory(getpath(sssavedir,32)+"intervalShots") = 0{
+		chdir getpath(sssavedir,32)
+		mkdir "intervalShots"
+	}
 
 	if kmexist(yabumidir) = -1{
 		yabumidir = dirinfo(0x10026) +"\\yabumi\\yabumiuploader.exe"
@@ -1705,12 +1797,12 @@ return
 	dd(0,1) = capx,capy,w,h
 	cellratio = 1.0*h/w
 	cellsize(0,1) = scrsize(0,1)/(cellnum(0,1)+1),round(cellratio*cellsize(0,1))
-	scrsize(1,1) = round(cellsize(1,1)* (cellnum(1,1)+1) )
+	scrsize(1,1) = round(cellsize(1,1)*(cellnum(1,1)+1) )
 	AspectRatio(1) = 1.0*scrsize(1,1)/scrsize(0,1)
 	
 	
 	///////////////////
-	
+	chdir currentdir
 return
 		
 *inisave
@@ -1803,6 +1895,10 @@ yubiwa=1
 	
 	if PathIsDirectory(sssavedir) {
 		WriteIni "Setting", "sssavedir",  sssavedir
+		if PathIsDirectory(getpath(sssavedir,32)+"intervalShots") = 0{
+			chdir getpath(sssavedir,32)
+			mkdir "IntervalShots"
+		}
 	} else {
 		savelogtext += "Info - SS保存先が存在しないためデフォルトに変更しました\n"
 		chdir dir_exe
@@ -1906,22 +2002,7 @@ yubiwa=1
 		savelogtext += "makelist.iniを保存しました"
 		dialog savelogtext
 	}
-	
-
-	
-	/*/////////////////////////////////////////
-	
-	lvname
-	rengoumode
-	tuika1
-	tuika2
-	sosuka
-	sosu
-	soka
-	
-	*//////////////////////////////////////////
-
-
+	chdir currentdir
 return
 
 *hotkeycapsetting
@@ -1977,6 +2058,7 @@ return
 *en_d
 	
 	if wparam = 1{
+		mode = 0
 		gosub *ssmode
 		objprm comboxid,0
 		return
