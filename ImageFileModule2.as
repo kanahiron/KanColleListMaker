@@ -40,9 +40,9 @@ WinXP以降の環境はGDI+を標準装備してます。
 ; com を使用します。
 %======================================================================================================*/
 
-#ifndef ImageModuleIncluded
-#define ImageModuleIncluded
-#module ImageModule
+#ifndef ImageModule2Included
+#define ImageModule2Included
+#module ImageModule2
 
 #uselib "gdiplus"       ; ◆◆ ふぁきゅふぁきゅー-. orz
 ; ◆ Gdiplusの基礎 --------------------------------------------------------------------------------------
@@ -803,27 +803,6 @@ ImgP_RotateFlip
     ImgM_CloseH
     if ib(1) & $FFFF0000  : redraw 1
     return
-
-#deffunc gdipngsave str s,int imageID,local h
-    dim h, 15
-    h  = 0, 0, $557CF406, $11D31A04, $0000739A, $2EF31EF8, 100, 1, $1D5BE4B5, $452DFA4A, $B35DDD9C, $EBE70551, 1, 4, varptr(h) + 24
-    ib = 1, 0, 0, 0
-    sdim bmscr
-    mref bmscr,(imageID+96)
-    GdiplusStartup h(0), ib
-    GdipCreateBitmapFromGdiDib bmscr(6), bmscr(5), h(1)
-    GdipSaveImageToFile h(1), s, h(2), h(7)
-    GdipDisposeImage   h(1) ;Image
-    GdiplusShutdown    h(0) ;Gdip
-return
-
-#deffunc gdijpgsave str s, int p
-    ib     = p,0,$557CF401,$11D31A04,$0000739A,$2EF31EF8,1,$1D5BE4B5,$452DFA4A,$B35DDD9C,$EBE70551,1,4,0
-    ib(13) = varptr(ib)                 ; 配列自動確保がされてもいいように確定してから代入
-    ImgM_CreateH ImchMode_ImageFromWindow  : ib(1) = stat
-    GdipSaveImageToFile ib(1), s, ib(2), ib(6)
-    ImgM_CloseH
-return
 
 ; http://www.tvg.ne.jp/menyukko/ ; Copyright(C) 2010-2014 衣日和 All rights reserved.
 #global
