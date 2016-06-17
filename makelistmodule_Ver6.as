@@ -52,23 +52,57 @@ return
 #global
 
 
+//////
+#ifndef getkancollewindowposauto_C
+#module N891N5
+#uselib "kernel32.dll"
+#func VirtualAllocN891N5 "VirtualAlloc" int, int, int, int
+#func VirtualFreeN891N5 "VirtualFree" int, int, int
+#define NULL                   0x00000000
+#define PAGE_EXECUTE_READWRITE 0x00000040
+#define MEM_COMMIT             0x00001000
+#define MEM_RESERVE            0x00002000
+#define MEM_DECOMMIT           0x00004000
+#define MEM_RELEASE            0x00008000
+#deffunc N891N5_destructor onexit
+	if(NULL != getkancollewindowposauto_C_ptr) {
+		VirtualFreeN891N5 getkancollewindowposauto_C_ptr, 188, MEM_DECOMMIT
+		VirtualFreeN891N5 getkancollewindowposauto_C_ptr, 0, MEM_RELEASE
+		getkancollewindowposauto_C_ptr = NULL
+	}
+	return
+#deffunc N891N5_constructor
+	N891N5_destructor
+	VirtualAllocN891N5 NULL, 188, MEM_RESERVE, PAGE_EXECUTE_READWRITE
+	VirtualAllocN891N5 stat, 188, MEM_COMMIT, PAGE_EXECUTE_READWRITE
+	getkancollewindowposauto_C_ptr    = stat
+	dupptr getkancollewindowposauto_C_bin, stat, 188, vartype("int")
+	getkancollewindowposauto_C_bin.0  = $6C8B5553, $C0331024, $57D23356, $8E0FED85, $00000097, $14247C8B
+	getkancollewindowposauto_C_bin.6  = $1C24748B, $90045F8D, $81FC4B8B, $FFFFFFE1, $750E3B00, $810B8B72
+	getkancollewindowposauto_C_bin.12 = $FFFFFFE1, $044E3B00, $8B400175, $E181044B, $00FFFFFF, $75084E3B
+	getkancollewindowposauto_C_bin.18 = $4C8B4001, $E1810C97, $00FFFFFF, $750C4E3B, $4C8B4001, $E1811097
+	getkancollewindowposauto_C_bin.24 = $00FFFFFF, $75104E3B, $4C8B4001, $E1811497, $00FFFFFF, $75144E3B
+	getkancollewindowposauto_C_bin.30 = $4C8B4001, $E1811897, $00FFFFFF, $75184E3B, $4C8B4001, $E1811C97
+	getkancollewindowposauto_C_bin.36 = $00FFFFFF, $751C4E3B, $F8834001, $42147407, $3B04C383, $758C0FD5
+	getkancollewindowposauto_C_bin.42 = $5FFFFFFF, $C8835D5E, $5FC35BFF, $C28B5D5E, $0000C35B
+	return
+#define global getkancollewindowposauto_C(%1, %2, %3) \
+	prm@N891N5 = varptr(%1), %2, varptr(%3):\
+	mref value@N891N5, 64:\
+	value@N891N5 = callfunc(prm@N891N5, getkancollewindowposauto_C_ptr@N891N5, 3)
+#global
+N891N5_constructor
+#endif
+/////////////////
+
+
 #module makelistmodule
+
 
 #deffunc init_makelist array disinfo_
 
-	dim verticallinedeta,19,3
-	verticallinedeta(0,0) = 0xC4B658, 0xC9BD56, 0xC2B546, 0xC3B63E, 0xBBAD2E, 0xB7AA23, 0xBCAE24, 0xB6A91A, 0xBBAE1D, 0xBAA629, 0xB7A326, 0xB6A225, 0xBFAB2E, 0xC7B336, 0xC0AC2F, 0xBAA629, 0xC2AE31, 0xB6A225, 0xC2AE31
-	verticallinedeta(0,1) = 0xCABA51, 0xCCBC4A, 0xCFBE47, 0xC6B338, 0xC3B033, 0xB8A429, 0xC3AF34, 0xC4B035, 0xBDA92E, 0xBCA82D, 0xBAA62B, 0xB7A328, 0xB8A429, 0xB6A227, 0xB7A328, 0xB7A328, 0xBAA62B, 0xC3AF34, 0xC8B439
-	verticallinedeta(0,2) = 0xE0CA60, 0xCEB949, 0xCCB747, 0xC6B141, 0xC4AF3F, 0xCBB646, 0xCEB949, 0xC8B343, 0xC5B040, 0xCBB646, 0xBFAA3A, 0xC3AE3E, 0xD4BF4F, 0xD4BF4F, 0xC6B141, 0xCBB646, 0xDFCA5A, 0xD8C03F, 0xD1BC3C
-	
-	dim verticallinexy,2,3
-	verticallinexy(0,0) = 109,23
-	verticallinexy(0,1) = 110,27
-	verticallinexy(0,2) = 111,31
 
-	dim horizontallinedeta,16
-	horizontallinedeta(0) = 0x00BFAB4A ,0x00B5A03E ,0x00A48D2A ,0x00A18924 ,0x00A68C28 ,0x009A801C ,0x00AF901F ,0x009A7B0A ,0x00977807 ,0x00947504 ,0x00917201 ,0x009D7E0D ,0x00947603 ,0x009B7D0A ,0x00927401 ,0x009D7F0C
-	;horizontallinedeta(0) = 0x00bfab4a
+	horizontallinedata(0) = 0x00947504 ,0x00917201 ,0x009D7E0D ,0x00947603 ,0x009B7D0A ,0x00927401 ,0x009D7F0C ,0x00947601
 	
 	dim tsscap,4
 	dim mxy,2
@@ -98,81 +132,20 @@ return
 	nid = ginfo(3)
 	
 	gsel hmid
-	vramset
-
-	repeat 19
-		vpxrgb verticallinexy(0,0),verticallinexy(1,0)+cnt
-		if verticallinedeta(cnt,0) = vpx_rgb:count++
+	VRAMset
+	
+	repeat 8
+		vpxrgb 35+cnt,105
+		if horizontallinedata(cnt) = vpx_rgb:count++
 	loop
-	if count = 19{
-		count = 0
-		gsel nid
+	gsel nid
+	
+	if count = 8{
 		return 1
-	} else {
-		gsel nid
-		count = 0
 	}
-
 return 0
 
-#deffunc getkancollewindowposauto int imageid,array sscap
 
-	gsel imageid
-	vramset
-	 
-	sw = ginfo(12)
-	sh = ginfo(13)
-
-	sscap(0) = 0,0,0,0
-	tsscap(0) = 0,0,0,0
-	count = 0
-	breakf = 0
-	xcnt = 0
-	ycnt = 0
-	ypos = 0
-	linep = 0
-
-	repeat sw/3
-		xcnt = cnt*3
-		repeat sh
-			ycnt = cnt
-			vpxrgb xcnt,ycnt
-
-			linep = -1
-			if verticallinedeta(0,0) = vpx_rgb:linep = 0
-			if verticallinedeta(0,1) = vpx_rgb:linep = 1
-			if verticallinedeta(0,2) = vpx_rgb:linep = 2
-			if linep = -1:continue
-			
-			tsscap(0) = xcnt-verticallinexy(0,linep),ycnt-verticallinexy(1,linep)
-
-			color 255,0,0
-			repeat 19
-				vpxrgb tsscap(0)+verticallinexy(0,0),tsscap(1)+verticallinexy(1,0)+cnt
-				if verticallinedeta(cnt,0) = vpx_rgb:count++
-				
-				vpxrgb tsscap(0)+verticallinexy(0,1),tsscap(1)+verticallinexy(1,1)+cnt
-				if verticallinedeta(cnt,1) = vpx_rgb:count++
-				
-				vpxrgb tsscap(0)+verticallinexy(0,2),tsscap(1)+verticallinexy(1,2)+cnt
-				if verticallinedeta(cnt,2) = vpx_rgb:count++
-			loop
-	
-			if count >= 6:breakf = 1
-			count = 0
-
-			if breakf :break
-			await
-		loop
-		if breakf :break
-	loop
-	
-	if breakf {
-		sscap(0) = tsscap(0)+disinfo(0),tsscap(1)+disinfo(1)
-		sscap(2) = sscap(0)+800,sscap(1)+480
-	}
-
-return
 
 #deffunc getkancollewindowposauto2 int imageid,array sscap
 
@@ -182,41 +155,18 @@ return
 	sw = ginfo(12)
 	sh = ginfo(13)
 
-	count = 0
-	breakf = 0
-	xcnt = 0
-	ycnt = 0
-	ypos = 0
-	linep = 0
+	getkancollewindowposauto_C vram,sw*sh,horizontallinedata
+	if stat = -1{
+		return -1
+	}
 
-	repeat sw*sh
-		rootcnt = cnt
-		if (vram(cnt) == horizontallinedeta(0)){
-			
-			repeat 7,1
-				if (vram(rootcnt+cnt) == horizontallinedeta(cnt)){
-					count++
-				}
-			loop
-			;dialog ""+count
-			if count = 7{
-				xx = (rootcnt\sw)
-				yy = ((sh-1)-rootcnt/sw)
-				sscap(0) = xx+disinfo(0)-26,yy+disinfo(1)-105
-				sscap(2) = sscap(0)+800,sscap(1)+480
-				break
-			}
-			continue rootcnt+count
-		}
-	loop
-
-
-return
-
+	sscap(0) = (stat\sw)+disinfo(0)-35,((sh-1)-stat/sw)+disinfo(1)-105
+	sscap(2) = sscap(0)+800,sscap(1)+480	
+	
+return 0
 
 #deffunc getkancollewindowposmanual int imageid1,array sscap,int imageid3
 
-	sscap(0) = 0,0,0,0
 	tsscap(0) = 0,0,0,0
 	mxy(0) = 0,0
 	mxy_(0) = 0,0
@@ -378,7 +328,7 @@ return
 	
 	;dialog ""+ccnt
 	
-	dialog strf("%d %d %d %d %d %d",sscap(0),sscap(1),sscap(2),sscap(3),sscap(2)-sscap(0),sscap(3)-sscap(1))
+	;dialog strf("%d %d %d %d %d %d",sscap(0),sscap(1),sscap(2),sscap(3),sscap(2)-sscap(0),sscap(3)-sscap(1))
 
 return
 
