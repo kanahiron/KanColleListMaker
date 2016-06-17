@@ -1,7 +1,7 @@
 /*
 * SoftWareName(Jp)	: 艦これ一覧めいかー
 * SoftWareName(En)	: KanColleListMaker
-* Version			: 2.0
+* Version			: 2.1
 * Author			: kanahiron
 * License			: MIT
 * Copyright(C) 2014 kanahiron
@@ -61,7 +61,7 @@
 #include "makelistmodule_Ver6_3.as"
 
 #pack "data2.png"
-#packopt name "艦これ一覧めいかー Ver2.0"
+#packopt name "艦これ一覧めいかー Ver2_1"
 #packopt hide 1
 
 #define CELLWMAX 8
@@ -69,7 +69,7 @@
 #define HOTKEYID	7789
 #define timerID		100
 #define ctype round(%1) int(strf("%%0.0f", %1))
-#define SOFTNAME "艦これ一覧めいかー Ver2.0"
+#define SOFTNAME "艦これ一覧めいかー Ver2.1"
 
 	onexit gosub *en_d
 
@@ -166,6 +166,7 @@
 	luposy = 0
 	rdposx = 0
 	rdposy = 0
+	twijpg = 0
 	dropwindowid = 0
 	dropf = 0
 	intervalsavedir = ""
@@ -352,9 +353,12 @@
 
 	gosub *twiinit
 	gosub *TweetWindow
+	
+	if enabletweetwindow {
+		gsel 19,1+frontrow
+		gsel 0,1+frontrow
+	}
 
-	listsize1 = 1
-	listsize2 = 0
 	stop
 
 *adummy
@@ -946,6 +950,10 @@ return
 	button gosub "連携する",*twioauth
 	mesy+=25
 	
+	objsize 350,20
+	pos 5,mesy
+	chkbox "Twitterにはjpgで投稿する(ネットが重い際にどうぞ)",twijpg:mesy+=20
+
 	objsize 150,20
 	pos 14,mesy
 	mes "一覧保存先"
@@ -1109,7 +1117,7 @@ return
 		objprm sscapiid,sscapmes
 	}
 	//
-	
+
 	buffer 5,sscapwh(0),sscapwh(1)
 
 	redraw 0
@@ -1132,11 +1140,6 @@ return
 	
 	}
 	
-	;if (autoaddnonsave & autoaddcaptcha & hotkeyaddf) {
-	;	oncmd 1
-	;	return
-	;}
-	
 	gsel 5
 	savename = strf("kancolle_%04d%02d%02d-%02d%02d%02d%03d%s",gettime(0),gettime(1),gettime(3),gettime(4),gettime(5),gettime(6),gettime(7),savekind(jpgsave))
 	
@@ -1152,20 +1155,14 @@ return
 	
 	if kmexist(savenamepath) <= 0{
 		logmessage = savename+"の保存に失敗しました"
-		objprm logid,logmessage
 	} else {
 		logmessage = savename+"を保存しました"
-		if mode != 3{
-			objprm logid,logmessage
-		}	
 		if dispcap & (mode = 0){
 			pos 0,dispcapy
 			gzoom 175,105,5,0,0,sscapwh(0),sscapwh(1),1
 		}
-	
 		
 		if (seqcapf = 0) & (mode = 0) {
-			//------------------------------------ほにゃらら
 			i = 3
 			repeat 3
 				PicStack(i) = PicStack(i-1)
@@ -1175,6 +1172,10 @@ return
 			gosub *TweetWindow
 		}
 		
+	}
+	
+	if mode != 3{
+		objprm logid,logmessage
 	}
 
 	oncmd 1
@@ -1315,7 +1316,7 @@ return
 	repeat cellnum(1,listmode)+1
 		ycnt = cnt
 		repeat cellnum(0,listmode)+1
-			if data(cnt,ycnt,listmode) >= 20{
+			if data(cnt,ycnt,listmode) >= 100{
 				if yoko <= cnt:yoko = cnt
 				if tate <= ycnt:tate = ycnt
 			}
@@ -1922,6 +1923,9 @@ return
 						Twi_userdata=
 						Twi_ACCESS_TOKEN=
 						Twi_ACCESS_SECRET=
+						enabletweetwindow=0
+						twijpg=0
+						tuika4=0
 						"}
 
 		bsave (dir_exe+"\\makelist.ini"),settingstr,strlen(settingstr)+1024
@@ -1969,9 +1973,15 @@ return
 	GetIni "Setting130", "Twi_ACCESS_SECRET",temp
 	ACCESS_SECRET = decstr(temp)
 	
-	if (tuika1+tuika2) != 1{
+	GetIni "Setting130", "enabletweetwindow",enabletweetwindow
+	GetIni "Setting130", "twijpg",twijpg
+	GetIni "Setting130", "tuika4", tuika4
+	
+	if (tuika1+tuika2+tuika3+tuika4) != 1{
 		tuika1 = 1
 		tuika2 = 0
+		tuika3 = 0
+		tuika4 = 0
 	}
 	
 	if (sosuka+sosu+sosk) != 1{
@@ -1984,7 +1994,6 @@ return
 		listsavedir = dir_exe
 		WriteIni "Setting", "listsavedir", listsavedir
 	}
-	
 
 	if PathIsDirectory(sssavedir) = 0{
 		sssavedir = dir_exe+"\\ScreenShots"
@@ -2063,30 +2072,6 @@ return
 *inisave
 	
 	savelogtext = ""
-
-/*
-yubiwa=1
-						kantai=1
-						page=0
-						autosearch=1
-						hidename=0
-						namecut=0
-						frontrow=1
-						hidelog=0
-						yabumiautoupload=1
-						othergame=0
-						dispcap=1
-						hotkeycap=1
-						autoaddcaptcha=1
-						jpgsave=0
-						jpgquality=90
-						disableseqcap=1
-						timersec=0
-						listsavedir=
-						sssavedir=
-						yabumidir=
-						hotkeystr=A___Z
-*/
 
 	if (yubiwa != 0) & (yubiwa != 1):yubiwa = 1
 	WriteIni "Setting", "yubiwa",yubiwa
@@ -2234,34 +2219,13 @@ yubiwa=1
 	if (tuika3 != 0) & (tuika3 != 1):tuika3=0
 	WriteIni "Setting122", "tuika3",tuika3
 	
-	if (tuika1+tuika2+tuika3) != 1{
-		tuika1 = 1
-		tuika2 = 0
-		tuika3 = 0
-	}
-	
 	if (sosuka != 0) & (sosuka != 1):sosuka=1
 	WriteIni "Setting122", "sosuka",sosuka
 	if (sosu != 0) & (sosu != 1):sosu=0
 	WriteIni "Setting122", "sosu",sosu
 	if (soka != 0) & (soka != 1):soka=0
 	WriteIni "Setting122", "soka",soka
-	
-	if (sosuka+sosu+sosk) != 1{
-		sosuka = 1
-		sosu = 0
-		soka = 0
-	}
-	
-	
-	/*
-		userdata = ""
-	ACCESS_TOKEN = ""
-	ACCESS_SECRET = ""
-	
-	
-	
-	;*/
+
 	sdim temp,256
 	temp = encstr(userdata)
 	WriteIni "Setting130", "Twi_userdata",temp
@@ -2269,6 +2233,20 @@ yubiwa=1
 	WriteIni "Setting130", "Twi_ACCESS_TOKEN",temp
 	temp = encstr(ACCESS_SECRET)
 	WriteIni "Setting130", "Twi_ACCESS_SECRET",temp
+	
+	if (enabletweetwindow != 0) & (enabletweetwindow != 1):enabletweetwindow=0
+	WriteIni "Setting130", "enabletweetwindow",enabletweetwindow
+	if (twijpg != 0) & (twijpg != 1):twijpg=0
+	WriteIni "Setting130", "twijpg",twijpg
+	if (tuika4 != 0) & (tuika4 != 1):tuika4=0
+	WriteIni "Setting130", "tuika4", tuika4
+	
+	if (tuika1+tuika2+tuika3+tuika4) != 1{
+		tuika1 = 1
+		tuika2 = 0
+		tuika3 = 0
+		tuika4 = 0
+	}
 	
 	if (sosuka+sosu+sosk) != 1{
 		sosuka = 1
@@ -2326,8 +2304,6 @@ return
 	disinfo(1) = GetSystemMetrics(77)
 	disinfo(2) = GetSystemMetrics(78)
 	disinfo(3) = GetSystemMetrics(79)
-	
-	;dialog ""+disinfo(0)+"\n"+disinfo(1)+"\n"+disinfo(2)+"\n"+disinfo(3)+"\n"
 
 	init_makelist disinfo
 
@@ -2404,6 +2380,9 @@ return
 	gsel 19
 	redraw 0
 	
+	objenable ttid,1
+	objenable tweetbid,1
+
 	syscolor 15
 	boxf
 
@@ -2475,29 +2454,59 @@ return
 			}
 		loop
 	
+		if twijpg & (jpgsave=0){
+			repeat count
+				buffer 21
+				picload tempsdim(cnt)
+				savenamed = strf("%s\\temp_%d.jpg",sssavedir,cnt)
+				gdiimagesave savenamed,jpgquality
+				if kmexist(savenamed) > 0{
+					tempsdim(cnt) = savenamed
+				}
+			loop
+		}
+	
+		
+		gsel 19
+		
+		dialog ""+tempsdim(0)
 		media_upload tempsdim,count,mediaids
+
 		if stat != 0{
 			dialog "画像のアップロードに失敗しました"
 		} else {
 			tweet tweettext,"",mediaids
-			if stat != 200{
-				dialog "ツイートに失敗しました"
-			}
-		}
+			if stat = 200{
 		
-		repeat 4
-			picStack(cnt) = ""
-		loop
-		tweettext = ""
-		twiOrder = 1,0,0,0
-		twiOrderCount = 1
+				repeat 4
+					picStack(cnt) = ""
+				loop
+				tweettext = ""
+				twiOrder = 1,0,0,0
+				twiOrderCount = 1
+	
+			logmessage = "ツイートを投稿しました"
+
+			} else {
+				dialog "ツイートに失敗しました"
+			} 
+		}
+	
+		if twijpg & (jpgsave=0){
+			repeat count
+				if kmexist(savenamed) > 0{
+					delete tempsdim(cnt)
+				}
+			loop
+		}
+
 		objenable ttid,1
 		objenable tweetbid,1
 	
 		gsel 0
-		logmessage = "ツイートを投稿しました"
-		objprm logid,logmessage
-		
+		if mode != 3{
+			objprm logid,logmessage
+		}
 		gsel nid
 	} else {
 		dialog "先にオプションから認証してね"
@@ -2512,6 +2521,17 @@ return
 		mode = 0
 		gosub *ssmode
 		objprm comboxid,0
+		return
+	}
+	
+	if wparam = 19{
+		gsel 19,-1
+		enabletweetwindow = 0
+		if mode = 0{
+			gsel 0
+			objprm enabletweetwindowcid,0
+			await
+		}
 		return
 	}
 
