@@ -1,14 +1,6 @@
-/*
-* SoftWareName(Jp)	: 一覧作るよ！(艦これ一覧めいかー)
-* SoftWareName(En)	: None(KanColleListMaker)
-* Version			: 1.0.4
-* Author			: kanahiron
-* License			: MIT
-* Copyright(C) 2014 kanahiron
-*/
-
 #include "kmodule.as"
 #include "gdiimagesave.as"
+#include "makelistmodule_Ver3.as"
 
 #uselib "shell32.dll"
 #func DragAcceptFiles "DragAcceptFiles" int,int
@@ -30,16 +22,19 @@
 #func ScreenToClient "ScreenToClient" int ,int
 #func ChildWindowFromPoint "ChildWindowFromPoint" int ,int
 
+#define WM_DROPFILES	0x0233
 #define NULL		0
+#define SRCCOPY		0x00CC0020
 #define CAPTUREBLT	0x40000000
 
-#packopt name "一覧作るよ！ Ver1_0_4"
+#packopt name "一覧作るよ！ Ver1_1"
 
 	onexit *end_
 
 	group = 0
 	yubiwa = 1
 	kantai = 1
+	autosearch = 1
 	sti = 0
 	gflag = 0
 	cliflag = 0
@@ -58,6 +53,7 @@
 	sdim titlemes,2
 	sdim sscapmes,256
 	sdim logmessage,256
+	sdim modemes,3
 	sdim stemp
 	selx(0) = 6,4
 	sely(0) = 4,2
@@ -66,17 +62,23 @@
 	bc(0) = 10,100
 	maxscrwh(0) = dd(0,group)*(selx(group)+1),dd(1,group)*(sely(group)+1)
 	mindexxy(0) = 0,0
-	modemes(0) = "艦娘一覧","攻略編成"
+	modemes(0) = "艦娘一覧","攻略編成","SSキャプチャ"
 	mxy(0) = 0,0
 	mxy_(0) = 0,0
-	sscapmes = "未設定です"
+	sscapmes = "取得する"
+	
+	init_makelist
 	
 	dirlist stemp,"ScreenShots",5
 	if stat = 0:mkdir "ScreenShots"
+	
+	/////
+	group = 2
 
 	buffer 8,800,480
 	bgscr 6,ginfo(20),ginfo(21),2:font "メイリオ",30,1
 	buffer 5,ginfo(20),ginfo(21)
+	;screen 5,ginfo(20),ginfo(21)
 	buffer 4,maxscrwh(0),maxscrwh(1)
 	buffer 3,dd(0,1),dd(1,1)
 	font "メイリオ",30,1
@@ -89,13 +91,17 @@
 	oncmd gosub *OnDropFiles, WM_DROPFILES
 	
 	screen 0,250,308:gsel 0,2:title "メイン画面"
+	hwnd0 = hwnd
+	DragAcceptFiles hwnd0, 1
+	oncmd gosub *OnDropFiles, WM_DROPFILES
+	
 	color 240,240,240:boxf:color
-	font "メイリオ",15,1
+	font "メイリオ",14
 	objmode 2
 	
-	objsize 250,45
+	objsize 200,30
 	pos 0,0
-	listbox group,45,"  艦娘一覧モード\n  攻略編成モード\n  SSキャプチャモード"
+	combox group,30,"  艦娘一覧モード\n  攻略編成モード\n  SSキャプチャモード"
 	objsize 0,0
 	button "dummy",*dummy
 
@@ -110,57 +116,67 @@
 	mxy_(0) = 0,0
 	cliflag = 0
 
-	gsel 0
+	gsel 0,2
 	clrobj 1
 	
 	if group = 0{	
-		width 250,308
-		objsize 250,50
-		pos 5,73
-		chkbox "指輪を表示する(保存時に反映)",yubiwa
-		chkbox "艦隊を表示する(保存時に反映)",kantai
-		pos 0,173
+		width 200,180
+		
+		objsize 200,20
+		pos 5,30
+		chkbox "指輪も範囲に入れる",yubiwa
+		chkbox "所属艦隊も範囲に入れる",kantai
+		
+		objsize 200,30
+		pos 0,70
 		button "作成",*make
-		pos 0,223
-		mesbox logmessage,250,85,0
+		pos 0,100
+		mesbox logmessage,200,80,0
 		logid = stat
 	}
 	if group = 1{
-		width 250,208
-		objsize 250,50
-		pos 0,73
+		width 200,140
+		
+		objsize 200,30
+		pos 0,30
 		button "作成",*make
-		pos 0,123
-		mesbox logmessage,250,85,0
+		pos 0,60
+		mesbox logmessage,200,80,0
 		logid = stat
 	}
 	if group = 2{
-		width 250,270
-		pos 12,77
-		mes "-スクリーンショットキャプチャ-"
-		pos 4,108
+		width 200,180
+
+		pos 4,35
 		mes "キャプチャ座標"
-		objsize 125,25
-		pos 115,103
-		mesbox sscapmes,134,30,0
+		
+		objsize 95,30
+		pos 105,30
+		button gosub sscapmes,*sssetting
 		sscapiid = stat
-		objsize 175,50
-		pos 0,135
+		
+		objsize 200,30
+		pos 0,60
 		button gosub "SSをキャプチャする",*sscaptcha
 		sscapbid = stat
-		objsize 75,50
-		pos 175,135
-		button gosub "設定",*sssetting
-		objsize 250,25
-		pos 0,185
-		mesbox logmessage,250,85,0
+
+		objsize 200,20
+		pos 5,90
+		chkbox "座標自動検索",autosearch
+
+		objsize 250,90
+		pos 0,110
+		mesbox logmessage,200,70,0
 		logid = stat
 	}
+
+	logmessage = strf("%sモード",modemes(group))
+	objprm logid,logmessage
 	
 	if group = 2:goto *ssmode
 	
 	gsel 1,1
-	title modemes(group)+"モード - 表示させたいマスにD&D"
+	title modemes(group)+"モード - 表示させたいセルにD&D"
 	width dd(0,group)*(selx(group)+1),dd(1,group)*(sely(group)+1)
 	
 	gosub *draw
@@ -314,6 +330,7 @@
 goto *set
 	
 *OnDropFiles
+	
 	oncmd 0
 	hdrop = wParam
 	sdim dropfile,260
@@ -321,20 +338,39 @@ goto *set
 	DragFinish hdrop
 	if peek(dropfile,0) = '"' : getstr dropfile, dropfile, 1, '"'
 
-	dmxy(0) = mousex/dd(0,group) , mousey/dd(1,group)
-
-	if dmxy(0) = selx(group) & dmxy(1) = sely(group){
+	if ginfo(24) = 0{
+	
+		dmxy(0) = selx(group),sely(group)
+		
+		repeat (sely(group)+1)*(selx(group)+1)
+			ycnt = cnt\(sely(group)+1)
+			xcnt = cnt/(sely(group)+1)
+			if data(xcnt,ycnt,group) = 0{
+				dmxy(0) = xcnt, ycnt
+				break
+			}
+		loop
+	
 	} else {
-		bc(group)++
-		data(dmxy(0),dmxy(1),group) = bc(group)
-		buffer bc(group)
-		picload dropfile
-		gsel 1
-		gosub *draw
+		dmxy(0) = mousex/dd(0,group) , mousey/dd(1,group)
 	}
+
+	bc(group)++
+	data(dmxy(0),dmxy(1),group) = bc(group)
+	buffer bc(group)
+	picload dropfile
+	gsel 1
+	gosub *draw
+	
+	gsel 0
+	logmessage = strf("%sをセル(%d,%d)に読み込みました",getpath(dropfile,11),dmxy(0),dmxy(1))
+	objprm logid,logmessage
+	
+	gsel 1
 
 	dmxy(0) = 0,0
 	dropfile = ""
+	cliflag = 0
 
 	oncmd 1
 return
@@ -370,12 +406,17 @@ return
 *ssmode
 
 	gsel 1,-1
-	gsel 0
-	if sscapmes = "未設定です":objenable sscapbid,0:else:objenable sscapbid,1
+	gsel 0,1
+	if sscapmes = "取得する":objenable sscapbid,0:else:objenable sscapbid,1
+	DragAcceptFiles hwnd0, 0
 
 	repeat
 
-		if group != gflag:gflag = group:goto *set
+		if group != gflag{
+			gflag = group
+			DragAcceptFiles hwnd0, 1
+			goto *set
+		}
 		await 33
 	loop
 
@@ -392,106 +433,17 @@ return
 	BitBlt hdc, 0, 0, ginfo(20), ginfo(21), hdcScreen, 0, 0,SRCCOPY
 	DeleteDC hdcScreen
 	redraw 1
-
-	width ginfo(20),ginfo(21),0,0
-	gsel 6,2
-	repeat
 	
-		redraw 0
-		pos 0,0
-		gcopy 5,0,0,ginfo(20),ginfo(21)
-		color
-		boxf 0,0,950,60
-		color 255,255,255
-		pos 10,10
-		mes "艦これの画面を囲うようにドラッグして下さい Escキーでキャンセル"
-		color
-
-		stick sti,256
-		if sti = 256{
-			if cliflag = 0{
-				cliflag = 1
-				mxy(0) = mousex
-				mxy(1) = mousey
-			}
-			if cliflag = 1{
-				color 0,255,0
-				boxf mxy(0),mxy(1),mousex,mousey
-				color
-			}
-		}
-		
-		if (sti = 0 & cliflag = 1){
-			cliflag = 0
-			mxy_(0) = mousex
-			mxy_(1) = mousey
-			dialog "この位置で決定しますか？",2,"確認"
-			if stat = 6:break
-		}
-		
-		if (sti = 128){
-			break
-		}
-		
-		redraw 1
-		await 17
-	loop
-	
-	gsel 6,-1
-	
-	if mxy(0) < mxy_(0) {
-		sscap(0) = mxy(0)
-		sscap(2) = mxy_(0)
+	if autosearch = 0 {
+		getkancollewindowposmanual　5,sscap,6
 	} else {
-		sscap(0) = mxy_(0)
-		sscap(2) = mxy(0)
+		getkancollewindowposauto 5,sscap
 	}
-	
-	if mxy(1) < mxy_(1) {
-		sscap(1) = mxy(1)
-		sscap(3) = mxy_(1)
-	} else {
-		sscap(1) = mxy_(1)
-		sscap(3) = mxy(1)
-	}
-	
-	gsel 5
-	repeat 300
-		pget sscap(0)+cnt,sscap(1)+200
-		if (ginfo_r + ginfo_g + ginfo_b) != 765{
-			sscap(0) = sscap(0)+cnt
-			break
-		}
-	loop
-	
-	repeat 300
-		pget sscap(2)-cnt,sscap(3)-200
-		if (ginfo_r + ginfo_g + ginfo_b) != 765{
-			sscap(2) = sscap(2)-cnt+1
-			break
-		}
-	loop
-	
-	repeat 300
-		pget sscap(0)+200,sscap(1)+cnt
-		if (ginfo_r + ginfo_g + ginfo_b) != 765{
-			sscap(1) = sscap(1)+cnt
-			break
-		}
-	loop
-
-	repeat 300
-		pget sscap(2)-200,sscap(3)-cnt
-		if (ginfo_r + ginfo_g + ginfo_b) != 765{
-			sscap(3) = sscap(3)-cnt+1
-			break
-		}
-	loop
 	
 	gsel 0,2
 	
 	if (sscap(2)-sscap(0)) != 800 | (sscap(3)-sscap(1)) != 480 {
-		sscapmes = "未設定です"
+		sscapmes = "取得する"
 		objprm sscapiid,sscapmes
 		objenable sscapbid,0
 		logmessage = "艦これの座標を特定できません\n詳細はreadmeをお読みください"
@@ -503,9 +455,6 @@ return
 		logmessage = "艦これの座標の取得に成功しました"
 		objprm logid,logmessage
 	}
-	
-	mxy(0) = 0,0
-	mxy_(0) = 0,0
 
 return
 
@@ -533,4 +482,5 @@ return
 
 *end_
 	DragAcceptFiles hwnd1, 0
+	DragAcceptFiles hwnd0, 0
 	end
