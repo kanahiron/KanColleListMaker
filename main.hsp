@@ -1,7 +1,7 @@
 /*
 * SoftWareName(Jp)	: 一覧作るよ！(艦これ一覧めいかー)
 * SoftWareName(En)	: None(KanColleListMaker)
-* Version			: 1.0
+* Version			: 1.0.4
 * Author			: kanahiron
 * License			: MIT
 * Copyright(C) 2014 kanahiron
@@ -33,8 +33,7 @@
 #define NULL		0
 #define CAPTUREBLT	0x40000000
 
-#packopt name "一覧作るよ！ Ver1_0"
-#pack "cursor.png"
+#packopt name "一覧作るよ！ Ver1_0_4"
 
 	onexit *end_
 
@@ -57,7 +56,9 @@
 	dim dmxy,2
 	dim sscap,4
 	sdim titlemes,2
-	sdim sscapmes,254
+	sdim sscapmes,256
+	sdim logmessage,256
+	sdim stemp
 	selx(0) = 6,4
 	sely(0) = 4,2
 	dd(0,0) = 194,138,387,154,389,279
@@ -69,15 +70,15 @@
 	mxy(0) = 0,0
 	mxy_(0) = 0,0
 	sscapmes = "未設定です"
+	
+	dirlist stemp,"ScreenShots",5
+	if stat = 0:mkdir "ScreenShots"
 
 	buffer 8,800,480
-	buffer 7,21,21
-	picload "cursor.png"
 	bgscr 6,ginfo(20),ginfo(21),2:font "メイリオ",30,1
 	buffer 5,ginfo(20),ginfo(21)
 	buffer 4,maxscrwh(0),maxscrwh(1)
-	buffer 3
-	buffer 2
+	buffer 3,dd(0,1),dd(1,1)
 	font "メイリオ",30,1
 	mes "ドラッグで"
 	mesxy(0) = ginfo(14),ginfo(15)*3
@@ -87,7 +88,7 @@
 	DragAcceptFiles hwnd1, 1
 	oncmd gosub *OnDropFiles, WM_DROPFILES
 	
-	screen 0,250,223:gsel 0,2:title "メイン画面"
+	screen 0,250,308:gsel 0,2:title "メイン画面"
 	color 240,240,240:boxf:color
 	font "メイリオ",15,1
 	objmode 2
@@ -107,29 +108,34 @@
 	
 	mxy(0) = 0,0
 	mxy_(0) = 0,0
-	
 	cliflag = 0
-	
+
 	gsel 0
 	clrobj 1
 	
 	if group = 0{	
-		width 250,223
+		width 250,308
 		objsize 250,50
 		pos 5,73
 		chkbox "指輪を表示する(保存時に反映)",yubiwa
 		chkbox "艦隊を表示する(保存時に反映)",kantai
 		pos 0,173
 		button "作成",*make
+		pos 0,223
+		mesbox logmessage,250,85,0
+		logid = stat
 	}
 	if group = 1{
-		width 250,123
+		width 250,208
 		objsize 250,50
 		pos 0,73
 		button "作成",*make
+		pos 0,123
+		mesbox logmessage,250,85,0
+		logid = stat
 	}
 	if group = 2{
-		width 250,185
+		width 250,270
 		pos 12,77
 		mes "-スクリーンショットキャプチャ-"
 		pos 4,108
@@ -145,6 +151,10 @@
 		objsize 75,50
 		pos 175,135
 		button gosub "設定",*sssetting
+		objsize 250,25
+		pos 0,185
+		mesbox logmessage,250,85,0
+		logid = stat
 	}
 	
 	if group = 2:goto *ssmode
@@ -258,7 +268,7 @@
 	drawcount = 0
 	repeat sely(group)+1
 		ycnt = cnt
-		repeat sely(group)+1
+		repeat selx(group)+1
 			if data(cnt,ycnt,group) >= 10{
 				pos cnt*w,ycnt*h
 				gcopy data(cnt,ycnt,group),capx,capy,w,h
@@ -266,16 +276,32 @@
 			}
 		loop
 	loop
+	
+	gsel 0,2
 
 	if drawcount != 0{
 		repeat
-			if kmexist(strf("%s_%03d.png",modemes(group),cnt)) = -1{
-				gdipngsave (strf("%s_%03d.png",modemes(group),cnt)),2
+			savename = strf("%s_%03d.png",modemes(group),cnt)
+			if kmexist(savename) = -1{
+				gdipngsave (savename),2
 				break
 			}
 		loop
+			
+		if kmexist(savename) <= 0{
+			logmessage = savename+"の保存に失敗しました"
+			objprm logid,logmessage
+		} else {
+			logmessage = savename+"を保存しました"
+			objprm logid,logmessage
+		}
+	
+	} else {
+		logmessage = "画像が一枚もありません"
+		objprm logid,logmessage
 	}
 
+		
 	dim mxy,2
 	dim mxy_,2
 	dim data,8,5,2
@@ -284,6 +310,7 @@
 	dim data,8,5,2
 	bc(0) = 10,100
 	cliflag = 0
+	
 goto *set
 	
 *OnDropFiles
@@ -356,18 +383,18 @@ return
 
 *sssetting
 
-	
 	gsel 0,-1
 	wait 40
-	hdcScreen = CreateDC("DISPLAY", NULL, NULL, NULL)
+
 	gsel 5
+	redraw 0
+	hdcScreen = CreateDC("DISPLAY", NULL, NULL, NULL)
 	BitBlt hdc, 0, 0, ginfo(20), ginfo(21), hdcScreen, 0, 0,SRCCOPY
-	redraw
 	DeleteDC hdcScreen
+	redraw 1
 
 	width ginfo(20),ginfo(21),0,0
 	gsel 6,2
-	mouse -1
 	repeat
 	
 		redraw 0
@@ -379,11 +406,6 @@ return
 		pos 10,10
 		mes "艦これの画面を囲うようにドラッグして下さい Escキーでキャンセル"
 		color
-
-		gmode 2
-		pos mousex-10,mousey-10
-		gcopy 7,0,0,21,21
-		gmode 0
 
 		stick sti,256
 		if sti = 256{
@@ -403,15 +425,11 @@ return
 			cliflag = 0
 			mxy_(0) = mousex
 			mxy_(1) = mousey
-			mouse
 			dialog "この位置で決定しますか？",2,"確認"
 			if stat = 6:break
-			if stat = 7:mouse -1
-			
 		}
 		
 		if (sti = 128){
-			mouse
 			break
 		}
 		
@@ -441,7 +459,7 @@ return
 	repeat 300
 		pget sscap(0)+cnt,sscap(1)+200
 		if (ginfo_r + ginfo_g + ginfo_b) != 765{
-			sscap(0) = sscap(0)+cnt-1
+			sscap(0) = sscap(0)+cnt
 			break
 		}
 	loop
@@ -449,7 +467,7 @@ return
 	repeat 300
 		pget sscap(2)-cnt,sscap(3)-200
 		if (ginfo_r + ginfo_g + ginfo_b) != 765{
-			sscap(2) = sscap(2)-cnt
+			sscap(2) = sscap(2)-cnt+1
 			break
 		}
 	loop
@@ -457,7 +475,7 @@ return
 	repeat 300
 		pget sscap(0)+200,sscap(1)+cnt
 		if (ginfo_r + ginfo_g + ginfo_b) != 765{
-			sscap(1) = sscap(1)+cnt-1
+			sscap(1) = sscap(1)+cnt
 			break
 		}
 	loop
@@ -465,7 +483,7 @@ return
 	repeat 300
 		pget sscap(2)-200,sscap(3)-cnt
 		if (ginfo_r + ginfo_g + ginfo_b) != 765{
-			sscap(3) = sscap(3)-cnt
+			sscap(3) = sscap(3)-cnt+1
 			break
 		}
 	loop
@@ -476,11 +494,14 @@ return
 		sscapmes = "未設定です"
 		objprm sscapiid,sscapmes
 		objenable sscapbid,0
-		dialog "艦これの座標を特定できませんでした\n詳細はreadmeをお読みください",0,"エラー"
+		logmessage = "艦これの座標を特定できません\n詳細はreadmeをお読みください"
+		objprm logid,logmessage
 	} else {
 		sscapmes = strf("%d,%d",sscap(0),sscap(1))
 		objprm sscapiid,sscapmes
 		objenable sscapbid,1
+		logmessage = "艦これの座標の取得に成功しました"
+		objprm logid,logmessage
 	}
 	
 	mxy(0) = 0,0
@@ -489,17 +510,25 @@ return
 return
 
 *sscaptcha
-
-	hdcScreen = CreateDC("DISPLAY", NULL, NULL, NULL)
+	
 	gsel 8
 	redraw 0
+	hdcScreen = CreateDC("DISPLAY", NULL, NULL, NULL)
 	BitBlt hdc, 0, 0, 800, 480, hdcScreen, sscap(0), sscap(1),SRCCOPY
-	redraw 1
 	DeleteDC hdcScreen
+	redraw 1
 
-	savename = strf("ScreenShots\\kancolle_%04d%02d%02d-%02d%02d%02d%03d.png",gettime(0),gettime(1),gettime(3),gettime(4),gettime(5),gettime(6),gettime(7))
-	gdipngsave savename,8
-
+	gsel 0
+	savename = strf("kancolle_%04d%02d%02d-%02d%02d%02d%03d.png",gettime(0),gettime(1),gettime(3),gettime(4),gettime(5),gettime(6),gettime(7))
+	gdipngsave "ScreenShots\\"+savename,8
+	if kmexist("ScreenShots\\"+savename) <= 0{
+		logmessage = savename+"の保存に失敗しました"
+		objprm logid,logmessage
+	} else {
+		logmessage = savename+"を保存しました"
+		objprm logid,logmessage
+	}
+		
 return
 
 *end_
