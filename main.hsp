@@ -51,7 +51,8 @@
 #include "makelistmodule_Ver5_9.as"
 
 #pack "data.png"
-#packopt name "艦これ一覧めいかー Ver1_2"
+#packopt name "艦これ一覧めいかー Ver1_2_1p_1"
+//#packopt runtime "hsp3klm.hrt" hsp3klm.hrtは再配布不可
 #packopt hide 1
 
 #define HOTKEYID	7789
@@ -72,8 +73,7 @@
 	mesy = 30
 	hotkeycap = 0
 	ret = 0
-	enablemultidisplay = 1
-		
+
 	jpgquality = 90
 	namecut = 0
 	hidelog = 0
@@ -143,7 +143,6 @@
 	seqcapmes = "開始"
 	scrsize(0,0) = limit(1358,210,round(0.66*maxscrwh(0))),round(AspectRatio(0)*scrsize(0,0))
 	scrsize(0,1) = limit(1120,250,round(0.66*maxscrwh(0))),round(AspectRatio(1)*scrsize(0,1))
-	;dialog ""+scrsize(0,1)+"  "+scrsize(1,1)
 	cellsize(0,0) = round(1.0*scrsize(0,0) / (cellnum(0,0)+1)) ,round(1.0*scrsize(1,0) / (cellnum(1,0)+1))
 	cellsize(0,1) = round(1.0*scrsize(0,1) / (cellnum(0,1)+1)) ,round(1.0*scrsize(1,1) / (cellnum(1,1)+1))
 	
@@ -167,7 +166,6 @@
 	SetWindowLong hwnd9,-20,stat|$80000
 	SetLayeredWindowAttributes hwnd9,0x00000000,128,LWA_ALPHA
 
-	//
 	screen 1,maxscrwh(0),maxscrwh(1),2:title "表示させたいセルにD&D"
 	hwnd1 = hwnd
 	DragAcceptFiles hwnd1, 0
@@ -177,14 +175,12 @@
 	framesx = ginfo_sizex - ginfo_winx
 	framesy = ginfo_sizey - ginfo_winy
 	
-	
 	//一覧モード出力用
 	buffer 2,disinfo(2),disinfo(3)
 
 	//画像読み込み用
 	buffer 7
 	picload "data.png"
-	
 	
 	;//キャプチャ作成用
 	buffer 8
@@ -196,7 +192,7 @@
 	//縮小処理用
 	buffer 3,maxscrwh(0)/5,maxscrwh(1)/3
 	
-	screen 0,350,500:title "メイン"
+	screen 0,350,600:title "メイン"
 	hwnd0 = hwnd
 	DragAcceptFiles hwnd0, 0
 	oncmd gosub *OnDropFiles ,WM_DROPFILES
@@ -275,6 +271,94 @@
 	oncmd 1
 return
 
+
+//SSモード――――――――――――――――――――――――――――――――――
+*ssmode
+	
+	
+	gsel 1,-1
+	gsel 0,1+frontrow
+	clrobj 1
+	color 240,240,240:boxf:color
+
+	mesy = 31
+	
+	pos 2,mesy
+	mes "キャプチャ座標"
+		
+	objsize 80,25
+	pos 95,mesy-3
+	button gosub sscapmes,*sssetting
+	sscapiid = stat
+	mesy+=21
+		
+	objsize 150-(((yabumiautoupload = 1) & (availableyabumi = 1))*25),30
+	pos 0,mesy
+	button gosub "SSをキャプチャする",*sscaptcha
+	sscapbid = stat
+
+	objsize 25,30
+	pos 150-(((yabumiautoupload = 1) & (availableyabumi = 1))*25),mesy
+	button gosub "開",*sssavefopen
+	fopenbid = stat
+	
+	if ((yabumiautoupload = 1) & (availableyabumi = 1)) {
+		pos 150,mesy
+	} else {
+		pos 200,mesy
+	}	
+	button gosub "UP",*yabumiupload
+	yabumibid = stat
+	
+	mesy+=29
+	
+	pos 2+(disableseqcap*-175),mesy+2
+	mes "連続キャプチャ"
+	objsize 80,25
+	pos 95+(disableseqcap*-175),mesy
+	if disableseqcap = 0:mesy+=24
+	button gosub seqcapmes,*seqcap
+	seqcapbid = stat
+	
+	objsize 175,20
+	pos 5,mesy
+	chkbox "座標自動検索",autosearch:mesy+=20
+	pos 5,mesy
+	chkbox "提督名と司令部Lvを隠す",hidename:mesy+=20
+	
+	dispcapy = mesy
+	if dispcap {
+		color 200,200,200
+		boxf 0,mesy,175,mesy+105
+		color 240,240,240
+		boxf 3,mesy+3,171,mesy+101
+		color
+		mesy += 105
+	}
+
+	if hidelog = 0{
+		pos 0,mesy
+		mesy += 70
+	} else {
+		pos -175,mesy
+	}
+	mesbox logmessage,175,70,0
+	logid = stat
+
+	if availablecap = 0{
+		objenable sscapbid,0
+		objenable seqcapbid,0
+		objenable yabumibid,0
+	} else {
+		objenable sscapbid,1
+		objenable seqcapbid,1
+		objenable yabumibid,1
+	}
+	
+	width 175,mesy
+	
+return
+
 //リストモード――――――――――――――――――――――――――――――――――
 *list
 	
@@ -288,12 +372,13 @@ return
 	color 240,240,240:boxf:color
 
 	if listmode = 0{	
-		width 175,168-(70*hidelog)
+		width 175,188-(70*hidelog)
 		
 		objsize 175,20
 		pos 5,mesy
 		chkbox "指輪も範囲に入れる",yubiwa:mesy+=20
 		chkbox "所属艦隊も範囲に入れる",kantai:mesy+=20
+		chkbox "ページ数も範囲に入れる",page:mesy+=20
 	}
 	if listmode = 1{
 		width 175,128-(70*hidelog)
@@ -311,14 +396,14 @@ return
 	
 	if ((yabumiautoupload = 1) & (availableyabumi = 1)) {
 		pos 150,mesy
-		button gosub "UP",*yabumiupload
-		yabumibid = stat
-	}
-
+	} else {
+		pos 200,mesy
+	}	
+	button gosub "UP",*yabumiupload
+	yabumibid = stat
 	
 	mesy+=30
 
-	
 	pos 0,mesy
 	mesbox logmessage,175,70,0
 	logid = stat
@@ -335,6 +420,240 @@ return
 	gosub *draw
 	
 return
+	
+//オプション――――――――――――――――――――――――――――――――――
+*option
+
+	gsel 1,-1
+	gsel 0,1+frontrow
+	clrobj 1
+	color 240,240,240:boxf:color
+	
+	mesy = 30
+	pos 4,mesy
+	mes "readmeをよくお読み下さい":mesy+=20
+	
+	objsize 350,20
+	pos 5,mesy
+	chkbox "提督名を隠すのではなくカットする",namecut:mesy+=20
+	pos 5,mesy
+	chkbox "常にメインウィンドウを最前列表示",frontrow:mesy+=20
+	pos 5,mesy
+	chkbox "ログを非表示",hidelog:mesy+=20
+	pos 5,mesy
+	chkbox "yabumiに自動でアップロードする",yabumiautoupload:mesy+=20
+	pos 5,mesy
+	chkbox "艦これ以外も手動で取得可能にする",othergame:mesy+=20
+	pos 5,mesy
+	chkbox "キャプチャのプレビューを有効にする",dispcap:mesy+=20
+	pos 5,mesy
+	chkbox "ホットキーでSSをキャプチャする",hotkeycap:mesy+=20
+	
+	; 
+
+	objsize 50,20
+	pos 30,mesy
+	chkbox "Alt",hotkeycapalt
+	pos 80,mesy
+	chkbox "Ctrl",hotkeycapctrl
+	pos 130,mesy
+	chkbox "Shift",hotkeycapshift
+	pos 180,mesy
+	chkbox "Win",hotkeycapwin
+	pos 240,mesy
+	input hotkeycapchar,20,20,1
+	pos 265,mesy
+	mes "キー":mesy+=20
+	
+	objsize 350,20
+	pos 5,mesy
+	chkbox "＊一覧モードでSSを自動追加する",autoaddcaptcha:mesy+=20
+	;pos 5,mesy
+	;chkbox "＊自動追加した時にキャプチャを保存しない",autoaddnonsave:mesy+=20
+	pos 5,mesy
+	chkbox "jpgで保存する",jpgsave:mesy+=20
+	
+	pos 5,mesy
+	mes "jpg保存品質"
+	pos 155,mesy
+	mes "1～100(大きいほど高画質)"
+	pos 100,mesy
+	input jpgquality,50,20,3:mesy+=20
+	
+	pos 5,mesy
+	chkbox "連続キャプチャを無効にする",disableseqcap:mesy+=20
+	
+	pos 5,mesy
+	mes "連続キャプチャの間隔"
+	pos 205,mesy
+	mes "x0.1秒 (0.1～99.9秒)"
+	pos 150,mesy
+	input timersec,50,20,3:mesy+=20
+
+	objsize 150,20
+	pos 14,mesy
+	mes "一覧保存先"
+	pos 200,mesy
+	button gosub "一覧保存先変更",*listsavedialog:mesy+=20
+	pos 0,mesy
+	mesbox listsavedir,350,45,5,259:mesy+=45
+	listsdid = stat
+	
+	pos 14,mesy
+	mes "SS保存先"
+	pos 200,mesy
+	button gosub "SS保存先変更",*sssavedialog:mesy+=20
+	pos 0,mesy
+	mesbox sssavedir,350,45,5,259:mesy+=45
+	sssdid = stat
+	
+	pos 14,mesy
+	mes "YabumiUploader.exeの場所"
+	pos 200,mesy
+	button gosub "変更",*yabumiuploaderdialog:mesy+=20
+	pos 0,mesy
+	mesbox yabumidir,350,45,5,259:mesy+=45
+	yabumiid = stat
+	
+	width 350,mesy
+
+return
+
+
+//SSキャプチャセッティング――――――――――――――――――――――――――――――――――
+*sssetting
+	
+	objenable comboxid,0
+	objenable sscapbid,0
+	objenable sscapiid,0
+	objenable seqcapbid,0
+	if (yabumiautoupload = 1) & (availableyabumi = 1){
+		objenable yabumibid,0
+	}
+	wait 50
+	
+	gsel 10
+	redraw 0
+	hdcScreen = CreateDC("DISPLAY", NULL, NULL, NULL)
+	BitBlt hdc,0,0, disinfo(2), disinfo(3), hdcScreen,  disinfo(0), disinfo(1),SRCCOPY
+	DeleteDC hdcScreen
+	redraw 1
+
+	if autosearch = 0 {
+		gsel 11,-1
+		pos 0,0
+		gcopy 10,0,0,disinfo(2),disinfo(3)
+		color 255,255,255
+		boxf abs(disinfo(0)),abs(disinfo(1)),abs(disinfo(0))+970,abs(disinfo(1))+45
+		color
+		pos abs(disinfo(0))+5,abs(disinfo(1))+2
+		mes "艦これの画面を覆うようにドラッグしてください Escキーでキャンセル"
+		gsel 11,2
+		MoveWindow hwnd11,disinfo(0),disinfo(1),disinfo(2),disinfo(3),1
+		LoadCursor 0, 32515
+		SetClassLong hwnd, -12, stat
+		getkancollewindowposmanual 10,sscap,9
+		gsel 11,-1
+		LoadCursor 0, 32512
+		SetClassLong hwnd, -12, stat
+	} else {
+		gsel 0
+		logmessage = "座標自動取得中です"
+		objprm logid,logmessage:await 
+		getkancollewindowposauto 10,sscap
+	}
+	
+	sscapwh(0) = sscap(2)-sscap(0),sscap(3)-sscap(1)
+
+	gsel 0,1+frontrow
+	objenable comboxid,1
+	objenable sscapiid,1
+	
+	if ( (sscapwh(0) = 800) & (sscapwh(1) = 480) ) | ( (othergame=1) & (autosearch=0) ){
+		sscapmes = strf("%d,%d",sscap(0),sscap(1))
+		objprm sscapiid,sscapmes
+		objenable sscapbid,1
+		objenable seqcapbid,1
+		logmessage = "座標の取得に成功しました"
+		objprm logid,logmessage
+		availablecap = 1
+		objenable yabumibid,1
+
+		
+	} else {
+		sscapmes = "取得する"
+		objprm sscapiid,sscapmes
+		objenable sscapbid,0
+		objenable seqcapbid,0
+		logmessage = "座標を取得できません\n詳細はreadmeをお読みください"
+		objprm logid,logmessage
+		availablecap = 0
+		objenable yabumibid,0
+
+	}
+	
+	if hotkeyset = 1 & availablecap = 1 {
+		gsel 0,0
+		title "*メイン"
+	} else {
+		gsel 0,0
+		title "メイン"
+	}
+
+
+return
+
+
+
+//SSキャプチャ――――――――――――――――――――――――――――――――――
+*sscaptcha
+	oncmd 0
+	
+	buffer 5,sscapwh(0),sscapwh(1)
+	redraw 0
+	hdcScreen = CreateDC("DISPLAY", NULL, NULL, NULL)
+	BitBlt hdc, 0, 0, sscapwh(0), sscapwh(1), hdcScreen, sscap(0), sscap(1),SRCCOPY
+	DeleteDC hdcScreen
+	redraw 1
+
+	if (homeport(5) = 1) & (hidename = 1) & (sscapwh(0) = 800) & (sscapwh(1) = 480) {
+
+		pos 113,0
+		gcopy 7,0,0,163,22
+		pos 395,10
+		gcopy 7,0,22,100,16
+
+		if (namecut = 1) {
+			buffer 5,800,450
+			redraw 0
+			hdcScreen = CreateDC("DISPLAY", NULL, NULL, NULL)
+			BitBlt hdc, 0, 0, 800, 480,  hdcScreen, sscap(0), sscap(1)+30,SRCCOPY
+			DeleteDC hdcScreen
+			redraw 1
+		}
+	
+	}
+	
+	savename = strf("kancolle_%04d%02d%02d-%02d%02d%02d%03d%s",gettime(0),gettime(1),gettime(3),gettime(4),gettime(5),gettime(6),gettime(7),savekind(jpgsave))
+	gdiimagesave sssavedir +"\\"+ savename,jpgquality
+	
+	gsel 0
+	
+	if kmexist(sssavedir +"\\"+ savename) <= 0{
+		logmessage = savename+"の保存に失敗しました"
+		objprm logid,logmessage
+	} else {
+		logmessage = savename+"を保存しました"
+		objprm logid,logmessage
+		if dispcap {
+			pos 0,dispcapy
+			gzoom 175,105,5,0,0,sscapwh(0),sscapwh(1),1
+		}
+	}
+
+	oncmd 1
+return
+
 
 *listdrag
 	
@@ -430,168 +749,6 @@ return
 	
 return
 
-//SSモード――――――――――――――――――――――――――――――――――
-*ssmode
-	
-	gsel 1,-1
-	gsel 0,1+frontrow
-	width 175,213-(70*hidelog)
-	clrobj 1
-	color 240,240,240:boxf:color
-
-	mesy = 31
-	
-	pos 2,mesy
-	mes "キャプチャ座標"
-		
-	objsize 80,25
-	pos 95,mesy-3
-	button gosub sscapmes,*sssetting
-	sscapiid = stat
-	mesy+=21
-		
-	objsize 150-(((yabumiautoupload = 1) & (availableyabumi = 1))*25),30
-	pos 0,mesy
-	button gosub "SSをキャプチャする",*sscaptcha
-	sscapbid = stat
-
-	objsize 25,30
-	pos 150-(((yabumiautoupload = 1) & (availableyabumi = 1))*25),mesy
-	button gosub "開",*sssavefopen
-	fopenbid = stat
-	
-	if ((yabumiautoupload = 1) & (availableyabumi = 1)) {
-		pos 150,mesy
-		button gosub "UP",*yabumiupload
-		yabumibid = stat
-	}
-	
-	mesy+=29
-	pos 2,mesy+2
-	mes "連続キャプチャ"
-	objsize 80,25
-	pos 95,mesy
-	button gosub seqcapmes,*seqcap
-	seqcapbid = stat
-	
-	mesy+=24
-		
-	objsize 175,20
-	pos 5,mesy
-	chkbox "座標自動検索",autosearch:mesy+=20
-	pos 5,mesy
-	chkbox "提督名と司令部Lvを隠す",hidename:mesy+=20
-
-	pos 0,mesy
-	mesbox logmessage,175,70,0
-	logid = stat
-
-	if availablecap = 0{
-		objenable sscapbid,0
-		objenable seqcapbid,0
-		if (yabumiautoupload = 1) & (availableyabumi = 1){
-			objenable yabumibid,0
-		}
-	} else {
-		objenable sscapbid,1
-		objenable seqcapbid,1
-		if (yabumiautoupload = 1) & (availableyabumi = 1){
-			objenable yabumibid,1
-		}
-	}
-	
-return
-	
-//オプション――――――――――――――――――――――――――――――――――
-*option
-
-	gsel 1,-1
-	gsel 0,1+frontrow
-	width 350,405
-	clrobj 1
-	color 240,240,240:boxf:color
-	
-	mesy = 30
-	pos 4,mesy
-	mes "readmeをよくお読み下さい":mesy+=20
-	
-	objsize 230,20
-	pos 5,mesy
-	chkbox "提督名を隠すのではなくカットする",namecut:mesy+=20
-	pos 5,mesy
-	chkbox "常にメインウィンドウを最前列表示",frontrow:mesy+=20
-	pos 5,mesy
-	chkbox "ログを非表示",hidelog:mesy+=20
-	pos 5,mesy
-	chkbox "yabumiに自動でアップロードする",yabumiautoupload:mesy+=20
-	pos 5,mesy
-	chkbox "艦これ以外も手動で取得可能にする",othergame:mesy+=20
-	pos 5,mesy
-	chkbox "ホットキーでSSをキャプチャする",hotkeycap:mesy+=20
-
-	objsize 50,20
-	pos 30,mesy
-	chkbox "Alt",hotkeycapalt
-	pos 80,mesy
-	chkbox "Ctrl",hotkeycapctrl
-	pos 130,mesy
-	chkbox "Shift",hotkeycapshift
-	pos 180,mesy
-	chkbox "Win",hotkeycapwin
-	pos 240,mesy
-	input hotkeycapchar,20,20,1:mesy+=20
-	
-	objsize 230,20
-	pos 5,mesy
-	chkbox "＊一覧モードでSSを自動追加する",autoaddcaptcha:mesy+=20
-
-	objsize 150,20
-	pos 5,mesy
-	chkbox "jpgで保存する",jpgsave:mesy+=20
-	
-	pos 5,mesy
-	mes "jpg保存品質"
-	pos 155,mesy
-	mes "1～100(大きいほど高画質)"
-	pos 100,mesy
-	input jpgquality,50,20,3:mesy+=20
-	
-	pos 5,mesy
-	mes "連続キャプチャの間隔"
-	pos 205,mesy
-	mes "x0.1秒 (0.1～99.9秒)"
-	pos 150,mesy
-	input timersec,50,20,3:mesy+=20
-
-	objsize 150,20
-	
-	pos 14,mesy
-	mes "一覧保存先"
-	pos 200,mesy
-	button gosub "一覧保存先変更",*listsavedialog:mesy+=20
-	pos 0,mesy
-	mesbox listsavedir,350,45,5,259:mesy+=45
-	listsdid = stat
-	
-	pos 14,mesy
-	mes "SS保存先"
-	pos 200,mesy
-	button gosub "SS保存先変更",*sssavedialog:mesy+=20
-	pos 0,mesy
-	mesbox sssavedir,350,45,5,259:mesy+=45
-	sssdid = stat
-	
-	pos 14,mesy
-	mes "YabumiUploader.exeの場所"
-	pos 200,mesy
-	button gosub "変更",*yabumiuploaderdialog:mesy+=20
-	pos 0,mesy
-	mesbox yabumidir,350,45,5,259:mesy+=45
-	yabumiid = stat
-
-return
-
-
 //一覧作成――――――――――――――――――――――――――――――――――
 *make
 	
@@ -615,17 +772,18 @@ return
 	tate++
 	
 	if listmode = 0{
-		if yubiwa = 0 & kantai = 0 : w = 377 : capx = 398
-		if yubiwa = 1 & kantai = 1 : w = 435 : capx = 363
-		if yubiwa = 1 & kantai = 0 : w = 400 : capx = 398
-		if yubiwa = 0 & kantai = 1 : w = 412 : capx = 363
-		h = 279
+		if yubiwa = 0 & kantai = 0 : w = 382 : capx = 392
+		if yubiwa = 1 & kantai = 1 : w = 440 : capx = 360
+		if yubiwa = 1 & kantai = 0 : w = 408 : capx = 392
+		if yubiwa = 0 & kantai = 1 : w = 415 : capx = 360
+		if page = 0:h = 279
+		if page = 1:h = 315
 		capy = 154
 	} else {
-		w = 455
+		w = 460
 		h = 365
-		capx = 330
-		capy = 100
+		capx = 327
+		capy = 103
 	}
 
 	buffer 2,w*yoko,h*tate
@@ -729,6 +887,7 @@ return
 	data(dmxy(0),dmxy(1),listmode) = bc(listmode)
 	buffer bc(listmode)
 	ImgF_PicloadEx addfilename
+
 	gsel 1
 	gosub *draw
 	
@@ -774,116 +933,6 @@ return
 	redraw 1
 return
 
-//SSキャプチャセッティング――――――――――――――――――――――――――――――――――
-*sssetting
-	
-	;gsel 0,-1
-	;wait 40
-	gsel 10
-	redraw 0
-	hdcScreen = CreateDC("DISPLAY", NULL, NULL, NULL)
-	BitBlt hdc,0,0, disinfo(2), disinfo(3), hdcScreen,  disinfo(0), disinfo(1),SRCCOPY
-	DeleteDC hdcScreen
-	redraw 1
-
-	if autosearch = 0 {
-		gsel 11,-1
-		pos 0,0
-		gcopy 10,0,0,disinfo(2),disinfo(3)
-		color 255,255,255
-		boxf abs(disinfo(0)),abs(disinfo(1)),abs(disinfo(0))+970,abs(disinfo(1))+45
-		color
-		pos abs(disinfo(0))+5,abs(disinfo(1))+2
-		mes "艦これの画面を覆うようにドラッグしてください Escキーでキャンセル"
-		gsel 11,2
-		MoveWindow hwnd11,disinfo(0),disinfo(1),disinfo(2),disinfo(3),1
-		LoadCursor 0, 32515
-		SetClassLong hwnd, -12, stat
-		getkancollewindowposmanual 10,sscap,9
-		gsel 11,-1
-		LoadCursor 0, 32512
-		SetClassLong hwnd, -12, stat
-	} else {
-		
-		getkancollewindowposauto 10,sscap
-	}
-	
-	sscapwh(0) = sscap(2)-sscap(0),sscap(3)-sscap(1)
-
-	gsel 0,1+frontrow
-	
-	if ( (sscapwh(0) = 800) & (sscapwh(1) = 480) ) | ( (othergame=1) & (autosearch=0) ){
-		sscapmes = strf("%d,%d",sscap(0),sscap(1))
-		objprm sscapiid,sscapmes
-		objenable sscapbid,1
-		objenable seqcapbid,1
-		logmessage = "座標の取得に成功しました"
-		objprm logid,logmessage
-		availablecap = 1
-	
-		if (yabumiautoupload = 1) & (availableyabumi = 1){
-			objenable yabumibid,1
-		}
-		
-	} else {
-		sscapmes = "取得する"
-		objprm sscapiid,sscapmes
-		objenable sscapbid,0
-		objenable seqcapbid,0
-		logmessage = "座標を取得できません\n詳細はreadmeをお読みください"
-		objprm logid,logmessage
-		availablecap = 0
-		if (yabumiautoupload = 1) & (availableyabumi = 1){
-			objenable yabumibid,0
-		}
-	}
-
-return
-
-//SSキャプチャ――――――――――――――――――――――――――――――――――
-*sscaptcha
-	oncmd 0
-	
-	buffer 5,sscapwh(0),sscapwh(1)
-	redraw 0
-	hdcScreen = CreateDC("DISPLAY", NULL, NULL, NULL)
-	BitBlt hdc, 0, 0, sscapwh(0), sscapwh(1), hdcScreen, sscap(0), sscap(1),SRCCOPY
-	DeleteDC hdcScreen
-	redraw 1
-
-	if (homeport(5) = 1) & (hidename = 1) & (sscapwh(0) = 800) & (sscapwh(1) = 480) {
-
-		pos 113,0
-		gcopy 7,0,0,120,22
-		pos 395,10
-		gcopy 7,0,22,100,16
-
-		if (namecut = 1) {
-			buffer 5,800,450
-			redraw 0
-			hdcScreen = CreateDC("DISPLAY", NULL, NULL, NULL)
-			BitBlt hdc, 0, 0, 800, 480,  hdcScreen, sscap(0), sscap(1)+30,SRCCOPY
-			DeleteDC hdcScreen
-			redraw 1
-		}
-	
-	}
-	
-	savename = strf("kancolle_%04d%02d%02d-%02d%02d%02d%03d%s",gettime(0),gettime(1),gettime(3),gettime(4),gettime(5),gettime(6),gettime(7),savekind(jpgsave))
-	gdiimagesave sssavedir +"\\"+ savename,jpgquality
-	
-	gsel 0
-		
-	if kmexist(sssavedir +"\\"+ savename) <= 0{
-		logmessage = savename+"の保存に失敗しました"
-		objprm logid,logmessage
-	} else {
-		logmessage = savename+"を保存しました"
-		objprm logid,logmessage
-	}
- oncmd 1
-return
-
 *seqcap
 	
 	if seqcapf = 0{
@@ -893,9 +942,7 @@ return
 		objenable comboxid,0
 		objenable sscapbid,0
 		objenable sscapiid,0
-		if (yabumiautoupload = 1) & (availableyabumi = 1){
-			objenable yabumibid,0
-		}
+		objenable yabumibid,0
 		seqcapf = 1
 		gosub *sscaptcha
 	} else {
@@ -905,9 +952,7 @@ return
 		objenable comboxid,1
 		objenable sscapbid,1
 		objenable sscapiid,1
-		if (yabumiautoupload = 1) & (availableyabumi = 1){
-			objenable yabumibid,1
-		}
+		objenable yabumibid,1
 		seqcapf = 0
 	}
 	
@@ -915,11 +960,11 @@ return
 
 *yabumiupload
 	
-	if stat = yabumibid {	
+	if mode = 0 {	
 		gosub *sscaptcha
 		exec yabumidir+" \""+(sssavedir +"\\"+ savename)+"\""
 	}
-	if stat = yabumilistbid{
+	if mode != 0{
 		gosub *make
 		if savename != ""{
 			exec yabumidir+" \""+(listsavedir +"\\"+ savename)+"\""
@@ -1028,6 +1073,7 @@ return
 			[Setting]
 			yubiwa=1
 			kantai=1
+			page=0
 			autosearch=1
 			hidename=0
 			namecut=0
@@ -1035,10 +1081,12 @@ return
 			hidelog=0
 			yabumiautoupload=1
 			othergame=0
+			dispcap=1
 			hotkeycap=1
 			autoaddcaptcha=1
 			jpgsave=0
 			jpgquality=90
+			disableseqcap=1
 			timersec=5
 			listsavedir=""
 			sssavedir=""
@@ -1046,226 +1094,128 @@ return
 			hotkeystr=A___Z"}
 		bsave (dir_exe+"\\makelist.ini"),settingstr,strlen(settingstr)+1024
 	}
-
 	
 	GetIni "Setting", "yubiwa", yubiwa
-	if (yubiwa != 0) & (yubiwa != 1):tempint = 1:WriteIni "Setting", "yubiwa",tempint
-
 	GetIni "Setting", "kantai", kantai
-	if (kantai != 0) & (kantai != 1):tempint = 1:WriteIni "Setting", "kantai",tempint
-	
+	GetIni "Setting", "page", page
 	GetIni "Setting", "autosearch", autosearch
-	if (autosearch != 0) & (autosearch != 1):tempint = 1:WriteIni "Setting", "autosearch",tempint
-
 	GetIni "Setting", "hidename", hidename
-	if (hidename != 0) & (hidename != 1):tempint = 0:WriteIni "Setting", "hidename",tempint
-	////
 	GetIni "Setting", "namecut", namecut
-	if (namecut != 0) & (namecut != 1):tempint = 0:WriteIni "Setting", "namecut",tempint
-	
 	GetIni "Setting", "frontrow", frontrow
-	if (frontrow != 0) & (frontrow != 1):tempint = 1:WriteIni "Setting", "frontrow",tempint
-	
-	GetIni "Setting", "hidelog", hidelog
-	if (hidelog != 0) & (hidelog != 1):tempint = 0:WriteIni "Setting", "hidelog",tempint
-
+	GetIni "Setting", "hidelog", hidelog	
 	GetIni "Setting", "yabumiautoupload", yabumiautoupload
-	if (yabumiautoupload != 0) & (yabumiautoupload != 1):tempint = 1:WriteIni "Setting", "yabumiautoupload",tempint
-	;yabumiautoupload
 	GetIni "Setting", "othergame", othergame
-	if (othergame != 0) & (othergame != 1):tempint = 0:WriteIni "Setting", "othergame",tempint
-	
+	GetIni "Setting", "dispcap", dispcap
 	GetIni "Setting", "hotkeycap", hotkeycap
-	if (hotkeycap != 0) & (hotkeycap != 1):tempint = 1:WriteIni "Setting", "hotkeycap",hotkeycap
-
 	GetIni "Setting", "autoaddcaptcha", autoaddcaptcha
-	if (autoaddcaptcha != 0) & (autoaddcaptcha != 1):tempint = 0:WriteIni "Setting", "autoaddcaptcha",autoaddcaptcha
-
 	GetIni "Setting", "jpgsave", jpgsave
-	if (jpgsave != 0) & (jpgsave != 1):tempint = 0:WriteIni "Setting", "jpgsave",tempint
-	
 	GetIni "Setting", "jpgquality", jpgquality
-	if (jpgquality < 1) | (jpgquality > 100) :jpgquality = 90
-	tempint = jpgquality
-	WriteIni "Setting", "jpgquality",tempint
-	
+	GetIni "Setting", "disableseqcap", disableseqcap
 	GetIni "Setting", "timersec", timersec
-	if (timersec < 0) | (timersec > 999):timersec = 5
-	tempint = timersec
-	WriteIni "Setting", "timersec",tempint
-	
-	////
-		
 	GetIni "Setting", "listsavedir", listsavedir
-	if PathIsDirectory(listsavedir){
-	} else {
+	GetIni "Setting", "sssavedir", sssavedir
+	GetIni "Setting", "yabumidir", yabumidir
+	GetIni "Setting", "hotkeystr", hotkeystr
+	
+	if PathIsDirectory(listsavedir) = 0{
 		listsavedir = dir_exe
-		tempstr = ""
-		WriteIni "Setting", "listsavedir", tempstr
+		WriteIni "Setting", "listsavedir", listsavedir
 	}
 	
-	GetIni "Setting", "sssavedir", sssavedir
-	if PathIsDirectory(sssavedir){
-	} else {
+
+	if PathIsDirectory(sssavedir) = 0{
 		sssavedir = dir_exe+"\\ScreenShots"
-		if PathIsDirectory(sssavedir){
-		} else {
+		if PathIsDirectory(sssavedir) = 0{
 			chdir dir_exe
 			mkdir "ScreenShots"
 		}
-		tempstr = ""
-		WriteIni "Setting", "sssavedir", tempstr
+		WriteIni "Setting", "sssavedir", sssavedir
 	}
-	
-	GetIni "Setting", "yabumidir", yabumidir
+
 	if kmexist(yabumidir) = -1{
 		yabumidir = dirinfo(0x10026) +"\\yabumi\\yabumiuploader.exe"
+		availableyabumi = 1
 		if kmexist(yabumidir) = -1{
 			availableyabumi = 0
 			yabumidir = ""
-			tempstr = ""
-			WriteIni "Setting", "yabumidir", tempstr
-		} else {
-			availableyabumi = 1
-			tempstr = yabumidir
-			WriteIni "Setting", "yabumidir", tempstr
 		}
-	} else {
-		availableyabumi = 1
-		tempstr = yabumidir
-		WriteIni "Setting", "yabumidir", tempstr
 	}
-			
-	GetIni "Setting", "hotkeystr", hotkeystr
+	WriteIni "Setting", "yabumidir", yabumidir
+	
 	if peek(hotkeystr,0) = 'A':hotkeycapalt=1
 	if peek(hotkeystr,1) = 'C':hotkeycapctrl=1
 	if peek(hotkeystr,2) = 'S':hotkeycapshift=1
 	if peek(hotkeystr,3) = 'W':hotkeycapwin=1
-	hotkeycapchar = strmid(hotkeystr,4,1);strf("%c",peek(hotkeystr,4))
+	hotkeycapchar = strmid(hotkeystr,4,1)
 	
 return
 		
 *inisave
-
+	
 	savelogtext = ""
 
-	if (yubiwa = 0) | (yubiwa = 1){
-		tempint = yubiwa
-		WriteIni "Setting", "yubiwa",tempint
-	} else {
-		tempint = 1
-		WriteIni "Setting", "yubiwa",tempint
-	}
+	if (yubiwa != 0) & (yubiwa != 1):yubiwa = 1
+	WriteIni "Setting", "yubiwa",yubiwa
 
-	if (kantai = 0) | (kantai = 1){
-		tempint = kantai
-		WriteIni "Setting", "kantai",tempint
-	} else {
-		tempint = 1
-		WriteIni "Setting", "kantai",tempint
-	}
-
-	if (autosearch = 0) | (autosearch = 1){
-		tempint = autosearch
-		WriteIni "Setting", "autosearch",tempint
-	} else {
-		tempint = 1
-		WriteIni "Setting", "autosearch",tempint
-	}
-
-	if (hidename = 0) | (hidename = 1){
-		tempint = hidename
-		WriteIni "Setting", "hidename",tempint
-	} else {
-		tempint = 0
-		WriteIni "Setting", "hidename",tempint
-	}
-
-	if (namecut = 0) | (namecut = 1){
-		tempint = namecut
-		WriteIni "Setting", "namecut",tempint
-	} else {
-		tempint = 0
-		WriteIni "Setting", "namecut",tempint
-	}
-
-	if (frontrow = 0) | (frontrow = 1){
-		tempint = frontrow
-		WriteIni "Setting", "frontrow",tempint
-	} else {
-		tempint = 1
-		WriteIni "Setting", "frontrow",tempint
-	}
+	if (kantai != 0) & (kantai != 1):kantai = 1
+	WriteIni "Setting", "kantai",kantai
 	
-	if (hidelog = 0) | (hidelog = 1){
-		tempint = hidelog
-		WriteIni "Setting", "hidelog",tempint
-	} else {
-		tempint = 0
-		WriteIni "Setting", "hidelog",tempint
-	}
-	;yabumiautoupload
-	if (yabumiautoupload = 0) | (yabumiautoupload = 1){
-		tempint = yabumiautoupload
-		WriteIni "Setting", "yabumiautoupload",tempint
-	} else {
-		tempint = 1
-		WriteIni "Setting", "yabumiautoupload",tempint
-	}
-	if (othergame = 0) | (othergame = 1){
-		tempint = hidelog
-		WriteIni "Setting", "othergame",othergame
-	} else {
-		tempint = 0
-		WriteIni "Setting", "othergame",othergame
-	}
-		
-	if (hotkeycap = 0) | (hotkeycap = 1){
-		tempint = hotkeycap
-		WriteIni "Setting", "hotkeycap",tempint
-	} else {
-		tempint = 1
-		WriteIni "Setting", "hotkeycap",tempint
-	}
-	
-	if (autoaddcaptcha = 0) | (autoaddcaptcha = 1){
-		tempint = autoaddcaptcha
-		WriteIni "Setting", "autoaddcaptcha",tempint
-	} else {
-		tempint = 0
-		WriteIni "Setting", "autoaddcaptcha",tempint
-	}
+	if (page != 0) & (page != 1):page = 1
+	WriteIni "Setting", "page",page
 
-	if (jpgsave = 0) | (jpgsave = 1){
-		tempint = jpgsave
-		WriteIni "Setting", "jpgsave",tempint
-	} else {
-		tempint = 0
-		WriteIni "Setting", "jpgsave",tempint
-	}
+	if (autosearch != 0) & (autosearch != 1):autosearch = 1
+	WriteIni "Setting", "autosearch",autosearch
+
+	if (hidename != 0) & (hidename != 1):hidename = 0
+	WriteIni "Setting", "hidename",hidename
+
+	if (namecut != 0) & (namecut != 1):namecut=0
+	WriteIni "Setting", "namecut",namecut
+	
+	if (frontrow != 0) & (frontrow != 1):frontrow=1
+	WriteIni "Setting", "frontrow",frontrow
+	
+	if (hidelog != 0) & (hidelog != 1):hidelog = 0
+	WriteIni "Setting", "hidelog",hidelog
+
+	if (yabumiautoupload != 0) & (yabumiautoupload != 1):yabumiautoupload=1
+	WriteIni "Setting", "yabumiautoupload",yabumiautoupload
+	
+	if (othergame != 0) & (othergame != 1):othergame = 0
+	WriteIni "Setting", "othergame",othergame
+	
+	if (dispcap != 0) & (dispcap != 1):dispcap=1
+	WriteIni "Setting", "dispcap",dispcap
+
+	if (hotkeycap != 0) & (hotkeycap != 1): hotkeycap = 1
+	WriteIni "Setting", "hotkeycap",hotkeycap
+
+	if (autoaddcaptcha != 0) & (autoaddcaptcha != 1):autoaddcaptcha=1
+	WriteIni "Setting", "autoaddcaptcha",autoaddcaptcha
+
+	if (jpgsave != 0) & (jpgsave != 1):jpgsave=0
+	WriteIni "Setting", "jpgsave",jpgsave
 	
 	if (jpgquality < 1) | (jpgquality > 100):jpgquality = 90
-	tempint = jpgquality
-	WriteIni "Setting", "jpgquality",tempint
+	WriteIni "Setting", "jpgquality",jpgquality
 	
+	if (disableseqcap != 0) & (disableseqcap != 1):disableseqcap = 1
+	WriteIni "Setting", "disableseqcap",disableseqcap
+
 	if (timersec < 0) | (timersec > 999):timersec = 5
-	tempint = timersec
-	WriteIni "Setting", "timersec",tempint
+	WriteIni "Setting", "timersec",timersec
 
 	if PathIsDirectory(listsavedir) {
-		tempstr = listsavedir
-		WriteIni "Setting", "listsavedir", tempstr
+		WriteIni "Setting", "listsavedir", listsavedir
 	} else {
 		savelogtext += "Info - 一覧保存先が存在しないためデフォルトに変更しました\n"
 		listsavedir = dir_exe
-		tempstr = listsavedir
-		WriteIni "Setting", "listsavedir", tempstr
+		WriteIni "Setting", "listsavedir", listsavedir
 		objprm listsdid,listsavedir
 	}
 	
 	if PathIsDirectory(sssavedir) {
-		tempstr = sssavedir
-		WriteIni "Setting", "sssavedir", tempstr
+		WriteIni "Setting", "sssavedir",  sssavedir
 	} else {
 		savelogtext += "Info - SS保存先が存在しないためデフォルトに変更しました\n"
 		chdir dir_exe
@@ -1273,8 +1223,7 @@ return
 			mkdir "ScreenShots"
 		}
 		sssavedir = dir_exe+"\\ScreenShots"
-		tempstr = sssavedir
-		WriteIni "Setting", "sssavedir", tempstr
+		WriteIni "Setting", "sssavedir", sssavedir
 		objprm sssdid,sssavedir
 	}
 
@@ -1283,21 +1232,16 @@ return
 		if kmexist(yabumidir) = -1{
 			availableyabumi = 0
 			yabumidir = ""
-			tempstr = ""
-			WriteIni "Setting", "yabumidir", tempstr
+			WriteIni "Setting", "yabumidir", yabumidir
 		} else {
 			availableyabumi = 1
-			tempstr = yabumidir
-			WriteIni "Setting", "yabumidir", tempstr
+			WriteIni "Setting", "yabumidir", yabumidir
 		}
 	} else {
 		availableyabumi = 1
-		tempstr = yabumidir
-		WriteIni "Setting", "yabumidir", tempstr
+		WriteIni "Setting", "yabumidir", yabumidir
 	}
 		
-	;*/
-
 	hotkeystr = ""
 		
 	if (hotkeycapalt + hotkeycapctrl + hotkeycapshift + hotkeycapwin) = 0{
@@ -1330,37 +1274,32 @@ return
 			hotkeycap = 0
 		}
 	}
+	
 	WriteIni "Setting", "hotkeystr", hotkeystr
-
+	
 	if savelogtext != ""{
 		savelogtext += "makelist.iniを保存しました"
 		dialog savelogtext
 	}
-	
-	;dialog hotkeystr
-	
+
+
 return
 
 *hotkeycapsetting
-;/*
+	
+	;& (hotkeystr != hotkeystr_temp)
 	if (hotkeycap = 1) & (hotkeystr != hotkeystr_temp) {
 		UnregisterHotKey hwnd0,HOTKEYID
 		RegisterHotKey hwnd0,HOTKEYID,(MOD_ALT*hotkeycapalt)|(MOD_CONTROL*hotkeycapctrl)|(MOD_SHIFT*hotkeycapshift)|(MOD_WIN*hotkeycapwin),hotkeycode
 		hotkeystr_temp = hotkeystr
 		if stat = 0{
-			;/*
 			logmessage = "ホットキーの設定に失敗しました"
 			objprm logid,logmessage
 			hotkeyset = 0
-			gsel 0,0
-			title "メイン"
-			;*/
 		} else {
 			logmessage = "ホットキーを設定しました"
 			objprm logid,logmessage
 			hotkeyset = 1
-			gsel 0,0
-			title "*メイン"
 		}
 	}
 	
@@ -1369,10 +1308,17 @@ return
 		logmessage = "ホットキーを解除しました"
 		objprm logid,logmessage
 		hotkeyset = 0
+		hotkeystr_temp = ""
+	}
+	;dialog "hotkeyset "+hotkeyset+"   hotkeycap "+hotkeycap+"\nhotkeystr "+hotkeystr +"    hotkeystr_temp "+ hotkeystr_temp
+	if hotkeyset = 1 & availablecap = 1 {
+		gsel 0,0
+		title "*メイン"
+	} else {
 		gsel 0,0
 		title "メイン"
 	}
-;*/
+	
 return
 
 
@@ -1395,12 +1341,14 @@ return
 		objprm comboxid,0
 		return
 	}
+	/*
 	if wparam = 12{
 		gsel 12,-1
 		gosub *ssmode
 		objprm comboxid,0
 		return
 	}
+	;*/
 	
 	DragAcceptFiles hwnd1, 0
 	DragAcceptFiles hwnd0, 0
@@ -1409,7 +1357,7 @@ return
 		KillTimer hwnd0,timerID
 	}
 	gosub *inisave
-	if (hotkeycap = 0) & (hotkeyset = 1){
+	if hotkeyset = 1 {
 		UnregisterHotKey hwnd0,HOTKEYID
 	}
 	end
