@@ -1,0 +1,507 @@
+/*
+* SoftWareName(Jp)	: 一覧作るよ！(艦これ一覧めいかー)
+* SoftWareName(En)	: None(KanColleListMaker)
+* Version			: 1.0
+* Author			: kanahiron
+* License			: MIT
+* Copyright(C) 2014 kanahiron
+*/
+
+#include "kmodule.as"
+#include "gdiimagesave.as"
+
+#uselib "shell32.dll"
+#func DragAcceptFiles "DragAcceptFiles" int,int
+#func DragQueryFile   "DragQueryFileA"  int,int,int,int
+#func DragQueryPoint  "DragQueryPoint"  int,int
+#func DragFinish      "DragFinish"      int
+
+#uselib "gdi32.dll"
+#cfunc CreateDC "CreateDCA" sptr,sptr,sptr,int
+#func DeleteDC "DeleteDC"  int
+#func BitBlt "BitBlt" int,int,int,int,int,int,int,int,int
+
+#uselib "user32.dll"
+#func MoveWindow "MoveWindow" int , int , int , int , int , int
+#func GetWindowLong "GetWindowLongA" int,int
+#func SetWindowLong "SetWindowLongA" int,int,int
+#func SetLayeredWindowAttributes "SetLayeredWindowAttributes" int,sptr,int,int
+#func GetCursorPos "GetCursorPos" int
+#func ScreenToClient "ScreenToClient" int ,int
+#func ChildWindowFromPoint "ChildWindowFromPoint" int ,int
+
+#define NULL		0
+#define CAPTUREBLT	0x40000000
+
+#packopt name "一覧作るよ！ Ver1_0"
+#pack "cursor.png"
+
+	onexit *end_
+
+	group = 0
+	yubiwa = 1
+	kantai = 1
+	sti = 0
+	gflag = 0
+	cliflag = 0
+	dim data,8,5,2
+	dim bc,2
+	dim dd,6,2
+	dim selx,2
+	dim sely,2
+	dim mesxy,2
+	dim maxscrwh,2
+	dim mindexxy,2
+	dim mxy,2
+	dim mxy_,2
+	dim dmxy,2
+	dim sscap,4
+	sdim titlemes,2
+	sdim sscapmes,254
+	selx(0) = 6,4
+	sely(0) = 4,2
+	dd(0,0) = 194,138,387,154,389,279
+	dd(0,1) = 228,182,330,100,455,365
+	bc(0) = 10,100
+	maxscrwh(0) = dd(0,group)*(selx(group)+1),dd(1,group)*(sely(group)+1)
+	mindexxy(0) = 0,0
+	modemes(0) = "艦娘一覧","攻略編成"
+	mxy(0) = 0,0
+	mxy_(0) = 0,0
+	sscapmes = "未設定です"
+
+	buffer 8,800,480
+	buffer 7,21,21
+	picload "cursor.png"
+	bgscr 6,ginfo(20),ginfo(21),2:font "メイリオ",30,1
+	buffer 5,ginfo(20),ginfo(21)
+	buffer 4,maxscrwh(0),maxscrwh(1)
+	buffer 3
+	buffer 2
+	font "メイリオ",30,1
+	mes "ドラッグで"
+	mesxy(0) = ginfo(14),ginfo(15)*3
+
+	screen 1,maxscrwh(0),maxscrwh(1),2:title "表示させたいマスにD&D":font "メイリオ",30,1
+	hwnd1 = hwnd
+	DragAcceptFiles hwnd1, 1
+	oncmd gosub *OnDropFiles, WM_DROPFILES
+	
+	screen 0,250,223:gsel 0,2:title "メイン画面"
+	color 240,240,240:boxf:color
+	font "メイリオ",15,1
+	objmode 2
+	
+	objsize 250,45
+	pos 0,0
+	listbox group,45,"  艦娘一覧モード\n  攻略編成モード\n  SSキャプチャモード"
+	objsize 0,0
+	button "dummy",*dummy
+
+	goto *set
+	
+	stop
+
+*dummy
+*set
+	
+	mxy(0) = 0,0
+	mxy_(0) = 0,0
+	
+	cliflag = 0
+	
+	gsel 0
+	clrobj 1
+	
+	if group = 0{	
+		width 250,223
+		objsize 250,50
+		pos 5,73
+		chkbox "指輪を表示する(保存時に反映)",yubiwa
+		chkbox "艦隊を表示する(保存時に反映)",kantai
+		pos 0,173
+		button "作成",*make
+	}
+	if group = 1{
+		width 250,123
+		objsize 250,50
+		pos 0,73
+		button "作成",*make
+	}
+	if group = 2{
+		width 250,185
+		pos 12,77
+		mes "-スクリーンショットキャプチャ-"
+		pos 4,108
+		mes "キャプチャ座標"
+		objsize 125,25
+		pos 115,103
+		mesbox sscapmes,134,30,0
+		sscapiid = stat
+		objsize 175,50
+		pos 0,135
+		button gosub "SSをキャプチャする",*sscaptcha
+		sscapbid = stat
+		objsize 75,50
+		pos 175,135
+		button gosub "設定",*sssetting
+	}
+	
+	if group = 2:goto *ssmode
+	
+	gsel 1,1
+	title modemes(group)+"モード - 表示させたいマスにD&D"
+	width dd(0,group)*(selx(group)+1),dd(1,group)*(sely(group)+1)
+	
+	gosub *draw
+	repeat
+	
+		stick sti,256
+	
+		if sti = 256{
+			//ドラッグ中処理は続く
+			mxy(0) = mousex/dd(0,group) ,mousey/dd(1,group)
+			
+			if (data(mxy(0),mxy(1),group)) >= 10  & cliflag = 0{
+				//一回しか処理されない
+				cliflag = 1
+				mxy_(0) = mxy(0),mxy(1)
+				mindexxy(0) = (mousex-(mxy_(0)*(dd(0,group)-1))),(mousey-(mxy_(1)*(dd(1,group)-1)))
+				
+				gsel 4
+				pos 0,0
+				gcopy 1,0,0,maxscrwh(0),maxscrwh(1)
+	
+				gsel 3
+				pos 0,0
+				gzoom dd(0,group),dd(1,group),data(mxy_(0),mxy_(1),group),dd(2,group),dd(3,group),dd(4,group),dd(5,group),1
+
+				gsel 1
+			}
+	
+			if cliflag = 1{
+				redraw 0
+				pos 0,0
+				gcopy 4,0,0,maxscrwh(0),maxscrwh(1)
+				gmode 3,dd(0,group),dd(1,group),100
+				pos mousex-mindexxy(0),mousey-mindexxy(1)
+				gcopy 3,0,0,dd(0,group),dd(1,group)
+				gmode 0
+				redraw 1
+			}
+		}
+		
+		if sti = 0 & cliflag = 1 {
+			//離した瞬間の処理
+			
+			if mxy(0) = selx(group) & mxy(1) = sely(group) {
+				data(mxy_(0),mxy_(1),group) = 0
+			} else {
+				temp = data(mxy_(0),mxy_(1),group) 
+				data(mxy_(0),mxy_(1),group) = data(mxy(0),mxy(1),group)
+				data(mxy(0),mxy(1),group) = temp
+			}
+	
+			mxy(0) = 0,0
+			mxy_(0) = 0,0
+			temp = 0
+			cliflag = 0
+	
+			gosub *draw
+		}
+
+		if group != gflag:gflag = group:goto *set
+		await 16
+
+	loop
+
+	stop
+	
+*make
+	
+	yoko = 0
+	tate = 0
+	capx = 0
+	capy = 0
+	w = 0
+	h = 0
+	
+	repeat sely(group)+1
+		ycnt = cnt
+		repeat selx(group)+1
+			if data(cnt,ycnt,group) >= 10{
+				if yoko <= cnt:yoko = cnt
+				if tate <= ycnt:tate = ycnt
+			}
+		loop
+	loop
+	yoko++
+	tate++
+	
+	if group = 0{
+		if yubiwa = 0 & kantai = 0 : w = 377 : capx = 398
+		if yubiwa = 1 & kantai = 1 : w = 435 : capx = 363
+		if yubiwa = 1 & kantai = 0 : w = 400 : capx = 398
+		if yubiwa = 0 & kantai = 1 : w = 412 : capx = 363
+		h = 279
+		capy = 154
+		
+	} else {
+		w = 455
+		h = 365
+		capx = 330
+		capy = 100
+	}
+
+	buffer 2,w*yoko,h*tate
+
+	drawcount = 0
+	repeat sely(group)+1
+		ycnt = cnt
+		repeat sely(group)+1
+			if data(cnt,ycnt,group) >= 10{
+				pos cnt*w,ycnt*h
+				gcopy data(cnt,ycnt,group),capx,capy,w,h
+				drawcount++
+			}
+		loop
+	loop
+
+	if drawcount != 0{
+		repeat
+			if kmexist(strf("%s_%03d.png",modemes(group),cnt)) = -1{
+				gdipngsave (strf("%s_%03d.png",modemes(group),cnt)),2
+				break
+			}
+		loop
+	}
+
+	dim mxy,2
+	dim mxy_,2
+	dim data,8,5,2
+	dim bc,2
+	dim dmxy,2
+	dim data,8,5,2
+	bc(0) = 10,100
+	cliflag = 0
+goto *set
+	
+*OnDropFiles
+	oncmd 0
+	hdrop = wParam
+	sdim dropfile,260
+	DragQueryFile hdrop, 0, varptr(dropfile), 260
+	DragFinish hdrop
+	if peek(dropfile,0) = '"' : getstr dropfile, dropfile, 1, '"'
+
+	dmxy(0) = mousex/dd(0,group) , mousey/dd(1,group)
+
+	if dmxy(0) = selx(group) & dmxy(1) = sely(group){
+	} else {
+		bc(group)++
+		data(dmxy(0),dmxy(1),group) = bc(group)
+		buffer bc(group)
+		picload dropfile
+		gsel 1
+		gosub *draw
+	}
+
+	dmxy(0) = 0,0
+	dropfile = ""
+
+	oncmd 1
+return
+
+*draw
+	redraw 0
+	color 255,255,255
+	boxf
+	color
+
+	pos dd(0,group)*selx(group)+((dd(0,group)-mesxy(0))/2) ,dd(1,group)*sely(group)+ ((dd(1,group) - mesxy(1))/2) 
+	mes "ここに\nドラッグで\n消えます"
+	
+	repeat selx(group)+1
+		line  cnt*dd(0,group),0,cnt*dd(0,group),maxscrwh(1)
+	loop
+	repeat sely(group)+1
+		line  0,cnt*dd(1,group),maxscrwh(0),cnt*dd(1,group)
+	loop
+
+	repeat sely(group)+1
+		ycnt = cnt
+		repeat selx(group)+1
+			if data(cnt,ycnt,group) >= 10{
+				pos cnt*dd(0,group),ycnt*dd(1,group)
+				gzoom dd(0,group),dd(1,group),data(cnt,ycnt,group),dd(2,group),dd(3,group),dd(4,group),dd(5,group),1
+			}
+		loop
+	loop
+	redraw 1
+return
+
+*ssmode
+
+	gsel 1,-1
+	gsel 0
+	if sscapmes = "未設定です":objenable sscapbid,0:else:objenable sscapbid,1
+
+	repeat
+
+		if group != gflag:gflag = group:goto *set
+		await 33
+	loop
+
+	stop
+
+*sssetting
+
+	
+	gsel 0,-1
+	wait 40
+	hdcScreen = CreateDC("DISPLAY", NULL, NULL, NULL)
+	gsel 5
+	BitBlt hdc, 0, 0, ginfo(20), ginfo(21), hdcScreen, 0, 0,SRCCOPY
+	redraw
+	DeleteDC hdcScreen
+
+	width ginfo(20),ginfo(21),0,0
+	gsel 6,2
+	mouse -1
+	repeat
+	
+		redraw 0
+		pos 0,0
+		gcopy 5,0,0,ginfo(20),ginfo(21)
+		color
+		boxf 0,0,950,60
+		color 255,255,255
+		pos 10,10
+		mes "艦これの画面を囲うようにドラッグして下さい Escキーでキャンセル"
+		color
+
+		gmode 2
+		pos mousex-10,mousey-10
+		gcopy 7,0,0,21,21
+		gmode 0
+
+		stick sti,256
+		if sti = 256{
+			if cliflag = 0{
+				cliflag = 1
+				mxy(0) = mousex
+				mxy(1) = mousey
+			}
+			if cliflag = 1{
+				color 0,255,0
+				boxf mxy(0),mxy(1),mousex,mousey
+				color
+			}
+		}
+		
+		if (sti = 0 & cliflag = 1){
+			cliflag = 0
+			mxy_(0) = mousex
+			mxy_(1) = mousey
+			mouse
+			dialog "この位置で決定しますか？",2,"確認"
+			if stat = 6:break
+			if stat = 7:mouse -1
+			
+		}
+		
+		if (sti = 128){
+			mouse
+			break
+		}
+		
+		redraw 1
+		await 17
+	loop
+	
+	gsel 6,-1
+	
+	if mxy(0) < mxy_(0) {
+		sscap(0) = mxy(0)
+		sscap(2) = mxy_(0)
+	} else {
+		sscap(0) = mxy_(0)
+		sscap(2) = mxy(0)
+	}
+	
+	if mxy(1) < mxy_(1) {
+		sscap(1) = mxy(1)
+		sscap(3) = mxy_(1)
+	} else {
+		sscap(1) = mxy_(1)
+		sscap(3) = mxy(1)
+	}
+	
+	gsel 5
+	repeat 300
+		pget sscap(0)+cnt,sscap(1)+200
+		if (ginfo_r + ginfo_g + ginfo_b) != 765{
+			sscap(0) = sscap(0)+cnt-1
+			break
+		}
+	loop
+	
+	repeat 300
+		pget sscap(2)-cnt,sscap(3)-200
+		if (ginfo_r + ginfo_g + ginfo_b) != 765{
+			sscap(2) = sscap(2)-cnt
+			break
+		}
+	loop
+	
+	repeat 300
+		pget sscap(0)+200,sscap(1)+cnt
+		if (ginfo_r + ginfo_g + ginfo_b) != 765{
+			sscap(1) = sscap(1)+cnt-1
+			break
+		}
+	loop
+
+	repeat 300
+		pget sscap(2)-200,sscap(3)-cnt
+		if (ginfo_r + ginfo_g + ginfo_b) != 765{
+			sscap(3) = sscap(3)-cnt
+			break
+		}
+	loop
+	
+	gsel 0,2
+	
+	if (sscap(2)-sscap(0)) != 800 | (sscap(3)-sscap(1)) != 480 {
+		sscapmes = "未設定です"
+		objprm sscapiid,sscapmes
+		objenable sscapbid,0
+		dialog "艦これの座標を特定できませんでした\n詳細はreadmeをお読みください",0,"エラー"
+	} else {
+		sscapmes = strf("%d,%d",sscap(0),sscap(1))
+		objprm sscapiid,sscapmes
+		objenable sscapbid,1
+	}
+	
+	mxy(0) = 0,0
+	mxy_(0) = 0,0
+
+return
+
+*sscaptcha
+
+	hdcScreen = CreateDC("DISPLAY", NULL, NULL, NULL)
+	gsel 8
+	redraw 0
+	BitBlt hdc, 0, 0, 800, 480, hdcScreen, sscap(0), sscap(1),SRCCOPY
+	redraw 1
+	DeleteDC hdcScreen
+
+	savename = strf("ScreenShots\\kancolle_%04d%02d%02d-%02d%02d%02d%03d.png",gettime(0),gettime(1),gettime(3),gettime(4),gettime(5),gettime(6),gettime(7))
+	gdipngsave savename,8
+
+return
+
+*end_
+	DragAcceptFiles hwnd1, 0
+	end
