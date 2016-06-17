@@ -1,7 +1,7 @@
 /*
 * SoftWareName(Jp)	: 艦これ一覧めいかー
 * SoftWareName(En)	: KanColleListMaker
-* Version			: 1.3beta1
+* Version			: 2.0
 * Author			: kanahiron
 * License			: MIT
 * Copyright(C) 2014 kanahiron
@@ -47,9 +47,6 @@
 #func global SetTimer "SetTimer" int,int,int,sptr
 #func global KillTimer "KillTimer" int,int
 
-#uselib "kernel32.dll"
-#cfunc getStrLen
-
 #uselib "winmm.dll"
 #cfunc global timeGetTime "timeGetTime"
 
@@ -64,7 +61,7 @@
 #include "makelistmodule_Ver6_3.as"
 
 #pack "data2.png"
-#packopt name "艦これ一覧めいかー Ver1_3beta1"
+#packopt name "艦これ一覧めいかー Ver2.0"
 #packopt hide 1
 
 #define CELLWMAX 8
@@ -72,7 +69,7 @@
 #define HOTKEYID	7789
 #define timerID		100
 #define ctype round(%1) int(strf("%%0.0f", %1))
-#define SOFTNAME "艦これ一覧めいかー Ver1.3beta1"
+#define SOFTNAME "艦これ一覧めいかー Ver2.0"
 
 	onexit gosub *en_d
 
@@ -151,8 +148,8 @@
 	
 	xass = 171,320,171,320
 	yass = 11,11,106,106
-	twiOrder = 0,0,0,0
-	twiOrdercount = 0
+	twiOrder = 1,0,0,0
+	twiOrdercount = 1
 	
 	bc(0) = 0
 	maxscrwh(0) = int(0.8*ginfo(20)),int(0.8*ginfo(21))
@@ -173,6 +170,12 @@
 	dropf = 0
 	intervalsavedir = ""
 	savenamepath = ""
+	
+	userdata = ""
+	ACCESS_TOKEN = ""
+	ACCESS_SECRET = ""
+	
+	tCupInit "KanColleListMaker", CONSUMER_KEY, CONSUMER_SECRET, 50
 	
 	scrsize(0,0) = limit(1358,210,round(0.66*maxscrwh(0))),scrsize(0,0)*aspectratio(0)
 	scrsize(0,1) = limit(1120,250,round(0.66*maxscrwh(0))),scrsize(0,1)*aspectratio(1)
@@ -271,6 +274,7 @@
 
 	screen 17,,,2
 	
+	;screen 10,disinfo(2),disinfo(3)
 	buffer 10,disinfo(2),disinfo(3)
 	
 	//手動選択重ね用
@@ -345,7 +349,8 @@
 		gosub *sssetting
 		gsel 0,1+frontrow
 	}
-	
+
+	gosub *twiinit
 	gosub *TweetWindow
 
 	listsize1 = 1
@@ -370,6 +375,7 @@
 			gosub *inisave				
 			gosub *hotkeycapsetting
 			gosub *disinfoinit
+			gosub *twiinit
 		}
 	
 		sendmsg hCombox, $147
@@ -1911,6 +1917,11 @@ return
 						sosuka=1
 						sosu=0
 						soka=0
+	
+						[Setting130]
+						Twi_userdata=
+						Twi_ACCESS_TOKEN=
+						Twi_ACCESS_SECRET=
 						"}
 
 		bsave (dir_exe+"\\makelist.ini"),settingstr,strlen(settingstr)+1024
@@ -1949,8 +1960,15 @@ return
 	GetIni "Setting122", "soka", soka
 	GetIni "Setting122", "manualpos", manualpos
 	
+		;*/
+	sdim temp,256
+	GetIni "Setting130", "Twi_userdata",temp
+	userdata = decstr(temp)
+	GetIni "Setting130", "Twi_ACCESS_TOKEN",temp
+	ACCESS_TOKEN = decstr(temp)
+	GetIni "Setting130", "Twi_ACCESS_SECRET",temp
+	ACCESS_SECRET = decstr(temp)
 	
-
 	if (tuika1+tuika2) != 1{
 		tuika1 = 1
 		tuika2 = 0
@@ -2038,8 +2056,6 @@ return
 	cellsize(0,1) = scrsize(0,1)/(cellnum(0,1)+1),round(cellratio*cellsize(0,1))
 	scrsize(1,1) = round(cellsize(1,1)*(cellnum(1,1)+1) )
 	AspectRatio(1) = 1.0*scrsize(1,1)/scrsize(0,1)
-	
-	
 	///////////////////
 	chdir currentdir
 return
@@ -2238,10 +2254,33 @@ yubiwa=1
 	}
 	
 	
+	/*
+		userdata = ""
+	ACCESS_TOKEN = ""
+	ACCESS_SECRET = ""
+	
+	
+	
+	;*/
+	sdim temp,256
+	temp = encstr(userdata)
+	WriteIni "Setting130", "Twi_userdata",temp
+	temp = encstr(ACCESS_TOKEN)
+	WriteIni "Setting130", "Twi_ACCESS_TOKEN",temp
+	temp = encstr(ACCESS_SECRET)
+	WriteIni "Setting130", "Twi_ACCESS_SECRET",temp
+	
+	if (sosuka+sosu+sosk) != 1{
+		sosuka = 1
+		sosu = 0
+		soka = 0
+	}
+	
 	if savelogtext != ""{
 		savelogtext += "makelist.iniを保存しました"
 		dialog savelogtext
 	}
+	
 	chdir currentdir
 return
 
@@ -2287,6 +2326,8 @@ return
 	disinfo(1) = GetSystemMetrics(77)
 	disinfo(2) = GetSystemMetrics(78)
 	disinfo(3) = GetSystemMetrics(79)
+	
+	;dialog ""+disinfo(0)+"\n"+disinfo(1)+"\n"+disinfo(2)+"\n"+disinfo(3)+"\n"
 
 	init_makelist disinfo
 
@@ -2297,7 +2338,6 @@ return
 
 *twioauth
 	
-		
 	gsel 0,-1
 	screen 18,175,300,2:title SOFTNAME
 	syscolor 15:boxf:color
@@ -2313,11 +2353,10 @@ return
 	button　gosub "OK",*twioauthok
 	
 	gsel 18,2
-	await
-	
-	
-	tCupInit "KanColleListMaker", CONSUMER_KEY, CONSUMER_SECRET, 10
-	
+
+	pos 5,120
+	mes "\n\n\n\nこの画面及びTwitter認証\nの部分はVer1.3では\nまだ不完全です\n手抜きでごめんなさいm(__)m"
+
 	address = getAuthorizeAddress()
 	if address != "Error"{
 		exec address,16
@@ -2326,9 +2365,6 @@ return
 		gsel 18,-1
 		gsel 0,1+frontrow
 	}
-	
-	pos 5,120
-	mes "\n\n\n\nこの画面及びTwitter認証\nの部分はVer1.3では\nまだ不完全です\n手抜きでごめんなさいm(__)m"
 
 return
 
@@ -2339,16 +2375,26 @@ return
 	ACCESS_SECRET = ""
 	
 	publishAccessToken ACCESS_TOKEN,ACCESS_SECRET,userdata,PIN
-	
-	if ACCESS_TOKEN != "" {
-		setAccessToken ACCESS_TOKEN, ACCESS_SECRET		
-	} else {	
-		dialog "認証に失敗しました\nもう一度お試しください"
+	if stat != 200{
+		dialog "Twitter認証に失敗しました\nもう一度お試しください"
 	}
-	
+
 	gsel 18,-1
 	gsel 0,1+frontrow
 	
+return
+
+*twiinit
+
+	if ACCESS_TOKEN != "" & ACCESS_SECRET != ""{
+		setAccessToken ACCESS_TOKEN, ACCESS_SECRET
+		nid = ginfo(3)
+		gsel 0
+		logmessage = "Twitter連携が有効になっています"
+		objprm logid,logmessage
+		gsel nid
+	}
+
 return
 
 *TweetWindow
@@ -2381,13 +2427,13 @@ return
 	
 	repeat 4
 		if PicStack(cnt) = "":break
+		if kmexist(PicStack(cnt)) < 1:break
 		buffer 21
 		picload PicStack(cnt)
 		gsel 19
 		pos xass(cnt),yass(cnt)
 		gzoom 144,90,21,0,0,800,480
 	loop
-	
 	
 	repeat 4
 		gmode 2
@@ -2407,8 +2453,13 @@ return
 	
 	if ACCESS_TOKEN != ""{
 	
+		nid = ginfo(3)
+	
+		gsel 19
+	
 		objenable ttid,0
 		objenable tweetbid,0
+		await
 		
 		sdim mediaids,1024
 		sdim tempsdim,256,4
@@ -2416,23 +2467,38 @@ return
 		count = 0
 		repeat 4
 			if twiOrder(cnt) = count+1 {
-				tempsdim(count) = picStack(cnt)
-				count++
-				continue 0
+				if picStack(cnt) != "" {
+					tempsdim(count) = picStack(cnt)
+					count++
+					continue 0
+				}
 			}
 		loop
-
+	
 		media_upload tempsdim,count,mediaids
-		tweet tweettext,"",mediaids
+		if stat != 0{
+			dialog "画像のアップロードに失敗しました"
+		} else {
+			tweet tweettext,"",mediaids
+			if stat != 200{
+				dialog "ツイートに失敗しました"
+			}
+		}
 		
 		repeat 4
 			picStack(cnt) = ""
 		loop
 		tweettext = ""
-		twiOrder = 0,0,0,0
-		twiOrderCount = 0
+		twiOrder = 1,0,0,0
+		twiOrderCount = 1
 		objenable ttid,1
 		objenable tweetbid,1
+	
+		gsel 0
+		logmessage = "ツイートを投稿しました"
+		objprm logid,logmessage
+		
+		gsel nid
 	} else {
 		dialog "先にオプションから認証してね"
 	}
