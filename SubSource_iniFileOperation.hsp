@@ -65,9 +65,13 @@
 						fontColorFourthFleetStr=E06020
 						fleetPunctuation=1
 						addOrderNum=1
+						directLink=1
+						airStation=0
+						autoVersionCheck=1
 						"}
 
 		bsave (dir_exe+"\\makelist.ini"),settingstr,strlen(settingstr)+1024
+		SetIni (dir_exe+"\\makelist.ini")
 	}
 
 	sdim intervalShotDir,512
@@ -136,6 +140,10 @@
 	GetIni "Setting250", "fontColorFourthFleetStr", fontColorFourthFleetStr
 	GetIni "Setting250", "fleetPunctuation", fleetPunctuation
 	GetIni "Setting250", "addOrderNum", addOrderNum
+
+	GetIni "Setting250", "airStation", airStation
+	GetIni "Setting250", "directLink", directLink
+	GetIni "Setting250", "autoVersionCheck", autoVersionCheck
 	
 	if strmid(hotkeystr,0,1) = "A":hotkeycapalt	= 1
 	if strmid(hotkeystr,1,1) = "C":hotkeycapctrl = 1
@@ -194,6 +202,7 @@ return
 	if FourthFleetName = "":FourthFleetName = "道中支援"
 	if (fleetPunctuation != 0) & (fleetPunctuation != 1):fleetPunctuation=1
 	if (addOrderNum != 0) & (addOrderNum != 1):addOrderNum=1
+	if (autoVersionCheck != 0) & (autoVersionCheck != 1):autoVersionCheck=1
 	
 	fontColorFirstFleet = int("$"+fontcolorFirstFleetstr)
 	fontColorSecondFleet = int("$"+fontcolorSecondFleetstr)
@@ -232,10 +241,6 @@ return
 	} else {
 		availableyabumi = 1
 	}
-	
-	#ifdef _debug
-		//dialog strf("alt = %d\nctrl = %d\nshift = %d\nwin = %d\ncharcode =%d\nchar = %s\nstr = %s",hotkeycapalt,hotkeycapctrl,hotkeycapshift,hotkeycapwin,hotkeycode,hotkeycapchar,hotkeystr)
-	#endif
 	
 	if (hotkeycapalt + hotkeycapctrl + hotkeycapshift + hotkeycapwin) = 0{
 		savelogtext += "Info - ホットキーの設定が不適切です(1) 設定をデフォルトに変更しました\n"
@@ -277,6 +282,13 @@ return
 		tuika2 = 0
 		tuika3 = 0
 		tuika4 = 0
+	}
+	
+	if (airStation+directLink) != 1{
+		dim airStation
+		airStation = 0
+		dim directLink
+		directLink = 1
 	}
 	
 	if (sosuka+sosu+sosk) != 1{
@@ -329,12 +341,32 @@ return
 	cellsize(0,1) = scrsize(0,1)/(cellnum(0,1)+1),round(cellratio*cellsize(0,1))
 	scrsize(1,1) = round(cellsize(1,1)*(cellnum(1,1)+1) )
 	AspectRatio(1) = 1.0*scrsize(1,1)/scrsize(0,1)
+
+		
+	if directLink{
+		w = 800
+		h = 480
+		capx = 0
+		capy = 0
+		cellnum(0,2) = 6,4
+	}
+	if airStation {
+		w = 225
+		h = 358
+		capx = 575
+		capy = 109
+		cellnum(0,2) = 2,0
+	}
+		
+	dd(0,2) = capx,capy,w,h
+	cellratio = 1.0*h/w
+
+	cellsize(0,2) = scrsize(0,2)/(cellnum(0,2)+1),round(cellratio*cellsize(0,2))
+	scrsize(1,2) = round(cellsize(1,2)*(cellnum(1,2)+1) )
+	AspectRatio(2) = 1.0*scrsize(1,2)/scrsize(0,2)
 	
 	chdir currentdir
-		
-	#ifdef _debug
-		//dialog strf("alt = %d\nctrl = %d\nshift = %d\nwin = %d\ncharcode =%d\nchar = %s\nstr = %s",hotkeycapalt,hotkeycapctrl,hotkeycapshift,hotkeycapwin,hotkeycode,hotkeycapchar,hotkeystr)
-	#endif
+
 return
 
 
@@ -402,6 +434,10 @@ return
 	WriteIni "Setting250", "fontColorFourthFleetStr", fontColorFourthFleetStr
 	WriteIni "Setting250", "fleetPunctuation", fleetPunctuation
 	WriteIni "Setting250", "addOrderNum", addOrderNum
+	WriteIni "Setting250", "airStation", airStation
+	WriteIni "Setting250", "directLink", directLink
+	WriteIni "Setting250", "autoVersionCheck",autoVersionCheck
+	
 return
 
 *loadHistory

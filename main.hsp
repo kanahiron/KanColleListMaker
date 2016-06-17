@@ -59,11 +59,12 @@
 #include "exdialog.as"
 #include "TsubuyakiSoup_mod.hsp"
 #include "key.hsp"
+#include "jsonParse.as"
 
 #include "makelistmodule_Ver6_4.as"
 
 #pack "data2.png"
-#packopt name "艦これ一覧めいかー Ver2_5_0_1"
+#packopt name "艦これ一覧めいかー Ver2_6"
 #packopt hide 1
 #packopt orgpath 1
 
@@ -71,12 +72,15 @@
 #define CELLHMAX 7
 #define HOTKEYID	7789
 #define timerID		100
+#define klmver 26000
 #define WM_LBUTTONDOWN	0x0201
 #define ctype round(%1) int(strf("%%0.0f", %1))
-#define SOFTNAME "艦これ一覧めいかー Ver2.5.0.1"
+#define SOFTNAME "艦これ一覧めいかー Ver2.6"
 
-#define nidpush nidindex++:nidstack(nidindex) = ginfo(3)
-#define nidpop gsel nidstack(nidindex),0:nidindex--
+#define nidPush nidindex++:nidstack(nidindex) = ginfo(3)
+#define nidPop gsel nidstack(nidindex),0:nidindex--
+
+	if tCupVer != "2.1":end
 
 	onexit gosub *en_d
 
@@ -105,32 +109,35 @@
 	availablecap = 0
 	availableyabumi = 0
 	hotkeyset = 0
+	saveListName = ""
 	
 	tempint = 0
 	tempstr = ""
 	currentdir = dir_cur
 
-	dim data,CELLWMAX,CELLHMAX,3
-	dim bc,(CELLWMAX*CELLHMAX*3)
-	dim dd,4,3
-	dim mesxy,3
-	dim maxscrwh,3
-	dim mindexxy,3
+	modeNum = 3
+
+	dim data,CELLWMAX,CELLHMAX,modeNum
+	dim bc,(CELLWMAX*CELLHMAX*modeNum)
+	dim dd,4,modeNum
+	dim mesxy,modeNum
+	dim maxscrwh,modeNum
+	dim mindexxy,modeNum
 	dim mxy,2
 	dim mxy_,2
 	dim dmxy,2
 	dim sscap,4
 	dim sscapwh,2
-	dim cellnum,2,3
-	dim scrsize,2,3
-	dim cellsize,2,3
+	dim cellnum,2,modeNum
+	dim scrsize,2,modeNum
+	dim cellsize,2,modeNum
 	dim tempmouse,2
 	dim disinfo,4
-	dim scrsizetemp,2,3
+	dim scrsizetemp,2,modeNum
 	dim nidstack,100
 	nidindex = 0
 	
-	ddim Aspectratio,2
+	ddim AspectRatio,modeNum
 	sdim sscapmes,256
 	sdim logmessage,256
 	sdim modemes,64,4
@@ -138,7 +145,7 @@
 	sdim sssavedir ,260
 	sdim listsavedir ,260
 	sdim yabumidir,260
-	sdim savekind,64,2
+	sdim savekind,64,modeNum
 	sdim hotkeycapchar
 	sdim hotkeystr
 	sdim hotkeystr_temp
@@ -152,11 +159,6 @@
 
 	twiPicFrameXL = 185,250,315,380,184
 	twiPicFrameXR = 248,313,378,443,444
-	//twiPicFrameXL = 170,245,320,395,190
-	//twiPicFrameXR = 243,318,393,468,450
-	
-	//twiPicFrameXL = 380,315,250,185,184
-	//twiPicFrameXR = 443,378,313,248,444
 	twiPicFrameYU = 3 ,3 , 3, 3, 45
 	twiPicFrameYD = 42,42,42,42,209
 	twiOrder = 0,0,0,0
@@ -166,11 +168,14 @@
 	enableSecond = 1
 	enableThread = 0
 	enableFourth = 0
+
+	directLink = 1
+	airStation = 0
 	
 	bc(0) = 0
 	maxscrwh(0) = int(0.8*ginfo(20)),int(0.8*ginfo(21))
 	mindexxy(0) = 0,0
-	modemes(0) = "SSキャプチャ","艦娘一覧","攻略編成","オプション"
+	modemes(0) = "SSキャプチャ","艦娘一覧","攻略編成","その他一覧作成モード","オプション"
 	mxy(0) = 0,0
 	mxy_(0) = 0,0
 	sscapwh = 0,0
@@ -219,13 +224,14 @@
 	ACCESS_TOKEN = ""
 	ACCESS_SECRET = ""
 	
-	tCupInit "KanColleListMaker", CONSUMER_KEY, CONSUMER_SECRET, 50
+	tCupInit "KanColleListMaker", CONSUMER_KEY, CONSUMER_SECRET, 7
 	
-	scrsize(0,0) = limit(1358,210,round(0.4*maxscrwh(0))),scrsize(0,0)*aspectratio(0)
-	scrsize(0,1) = limit(1120,250,round(0.4*maxscrwh(0))),scrsize(0,1)*aspectratio(1)
+	scrsize(0,0) = limit(1358,210,round(0.4*maxscrwh(0))),scrsize(0,0)*aspectRatio(0)
+	scrsize(0,1) = limit(1120,250,round(0.4*maxscrwh(0))),scrsize(0,1)*aspectRatio(1)
+	scrsize(0,2) = limit(1120,250,round(0.4*maxscrwh(0))),scrsize(0,2)*aspectRatio(2)
 	scrsizetemp(0,0)  = scrsize(0,0),scrsize(1,0)
 	scrsizetemp(0,1)  = scrsize(0,1),scrsize(1,1)
-	
+	scrsizetemp(0,2)  = scrsize(0,2),scrsize(1,2)
 	
 	gosub *iniload
 	gosub *dataCheck
@@ -307,11 +313,11 @@
 	
 	objsize 175,30
 	pos 0,0
-	;combox cellmode,30,"  SSキャプチャモード\n  艦娘一覧モード\n  攻略編成モード\n  その他一覧作成モード\n  オプション"
-	combox cellmode,30,"  SSキャプチャモード\n  艦娘一覧モード\n  攻略編成モード\n  オプション"
+	combox cellmode,30,"  SSキャプチャモード\n  艦娘一覧モード\n  攻略編成モード\n  その他一覧作成モード\n  オプション"
+	;combox cellmode,30,"  SSキャプチャモード\n  艦娘一覧モード\n  攻略編成モード\n  オプション"
 	comboxid = stat
 	hcombox = objinfo_hwnd(comboxid)
-	modeOptionNum = 3
+	modeOptionNum = 4
 	objsize 0,0
 	button "dum_my",*adummy
 	
@@ -334,6 +340,7 @@
 		gsel 0,1+frontrow
 	}
 
+	gosub *VerCheck
 	stop
 
 *adummy
@@ -365,6 +372,7 @@
 		}
 	
 		if mode = 0{
+			gsel 0
 			gosub *ssmode
 		}
 		if mode = 1{
@@ -374,6 +382,11 @@
 		}
 		if mode = 2{
 			listmode = 1
+			gsel 1,0
+			gosub *list
+		}
+		if mode = 3{
+			listmode = 2
 			gsel 1,0
 			gosub *list
 		}
@@ -398,18 +411,9 @@
 			}
 		}
 
-		if mode = 1{	
-			if (lparam = yubiwach) | (lparam = kantaich) | (lparam = pagech) | (lparam = lvnamech) {
-				gosub *listchange
-			}
+		if ((mode != 0)&(mode != modeOptionNum)){
+			gosub *listchange
 		}
-	
-		if mode = 2{	
-			if (lparam = sosukach) | (lparam = sosuch) | (lparam = sokach) | (lparam = tuika1ch) | (lparam = tuika2ch) | (lparam = tuika3ch) | (lparam = tuika4ch) | (lparam = fleetPunctuationch) | (lparam = listsize1ch) | (lparam = listsize2ch) {
-				gosub *listchange
-			}
-		}
-		
 	}
 	
 	
@@ -417,7 +421,8 @@
 return
 
 *listchange
-	
+
+	nidPush
 	if mode = 1{
 	
 		gsel 0
@@ -552,8 +557,45 @@ return
 		width scrsize(0,1),scrsize(1,1)
 	}
 
-	gosub *draw
+	if (mode = 3){
+		w = 0
+		h = 0
+		capx = 0
+		capy = 0
+		cellratio = 0,0
+		sendmsg directLinkCh, $F2
+		directLink = stat & 0x01
+		sendmsg airStationCh, $F2
+		airStation = stat & 0x01
+
+		if directLink{
+			w = 800
+			h = 480
+			capx = 0
+			capy = 0
+			cellnum(0,2) = 6,4
+		}
+		if airStation {
+			w = 225
+			h = 358
+			capx = 575
+			capy = 109
+			cellnum(0,2) = 2,0
+		}
 		
+		dd(0,2) = capx,capy,w,h
+		cellratio = 1.0*h/w
+
+		cellsize(0,2) = scrsize(0,2)/(cellnum(0,2)+1),round(cellratio*cellsize(0,2))
+		scrsize(1,2) = round(cellsize(1,2)*(cellnum(1,2)+1) )
+		AspectRatio(2) = 1.0*scrsize(1,2)/scrsize(0,2)
+		gsel 1
+		width scrsize(0,2),scrsize(1,2)
+	}
+
+	gosub *draw
+
+	nidPop
 return
 
 
@@ -891,6 +933,27 @@ return
 
 	}
 
+	if listmode = 2{
+	
+		width  175
+		
+		objsize 175,20
+		
+		pos 7,mesy
+		chkbox "直接連結",directLink:mesy+=20
+		directLinkCId = stat
+		directLinkCh = objinfo_hwnd(directLinkCId)
+		SetWindowLong directLinkCh, -16, $50000009 | $20000
+
+		pos 7,mesy
+		chkbox "基地航空隊",airStation:mesy+=20
+		airStationCId = stat
+		airStationCh = objinfo_hwnd(airStationCId)
+		sendmsg airStationCh, $F4, $9
+
+
+	}
+
 	syscolor 16
 	line 3,mesy,172,mesy
 	color
@@ -967,9 +1030,11 @@ return
 	pos 5,mesy
 	chkbox "キャプチャのプレビューを有効にする",dispcap:mesy+=20
 	pos 5,mesy
-	chkbox "取得座標を手動で入力できるようにする(暫定)",manualpos:mesy+=20
+	chkbox "取得座標を手動で入力できるようにする",manualpos:mesy+=20
 	pos 5,mesy
 	chkbox "画像の右下に艦これ一覧めいかーの名前を入れる",senden:mesy+=20
+	pos 5,mesy
+	chkbox "起動時に自動でバージョンチェックを行う",autoVersionCheck:mesy+=20
 	pos 5,mesy
 	chkbox "ホットキーでSSをキャプチャする",hotkeycap:mesy+=20
 
@@ -1228,7 +1293,8 @@ return
 //SSキャプチャ――――――――――――――――――――――――――――――――――
 *sscaptcha
 	oncmd 0
-	
+
+	nidPush
 	gsel 0
 	
 	//暫定数値直接入力
@@ -1242,6 +1308,17 @@ return
 		objprm sscapiid,sscapmes
 	}
 	//
+	if (sscapwh(0) < 50) | (sscapwh(1) < 30){
+
+		logmessage = "取得範囲が小さすぎます"
+		if mode != modeOptionNum{
+			objprm logid,logmessage
+		}
+		nidPop
+		oncmd 1
+		return
+	}
+		
 
 	buffer 5,sscapwh(0),sscapwh(1)
 
@@ -1302,6 +1379,7 @@ return
 		objprm logid,logmessage
 	}
 
+	nidPop
 	oncmd 1
 return
 
@@ -1451,13 +1529,14 @@ return
 			bc(data(xcnt, ycnt,listmode)-100) = 0
 		}
 	}
-	if ((dropwindowid = 0) & (dropf = 1)) | ((autoaddcaptcha = 1)  & (dropf = 0)){
+	if (autoaddcaptcha = 1){
 
 		repeat
-			if listmode = 0{
+			if listmode = 0 {
 				ycnt = cnt\(cellnum(1,listmode)+1)
 				xcnt = cnt/(cellnum(1,listmode)+1)
-			} else {
+			} 
+			if listmode = 1{
 				if tuika1{
 					xcnt = (((cnt\(6*(cellnum(0,listmode)+1)/2))/6)*2)+(cnt\2)
 					ycnt = ((cnt/((cellnum(0,listmode)+1)*3))*3)+((cnt\6)/2)
@@ -1475,6 +1554,10 @@ return
 					ycnt = cnt\6
 				}
 			}
+			if listmode = 2 {
+				ycnt = cnt\(cellnum(1,listmode)+1)
+				xcnt = cnt/(cellnum(1,listmode)+1)
+			} 
 			xcnt = limit(xcnt,0,cellnum(0,listmode))
 			ycnt = limit(ycnt,0,cellnum(1,listmode))
 			if data(xcnt,ycnt,listmode) = 0{
@@ -1490,7 +1573,7 @@ return
 		
 	}
 
-	repeat (CELLWMAX*CELLHMAX*3)
+	repeat (CELLWMAX*CELLHMAX*modeNum)
 		if bc(cnt) = 0{
 			bc(cnt) = 1
 			bufid = cnt +100
@@ -1655,7 +1738,7 @@ return
 	if (wparam = HOTKEYID) & (availablecap = 1){
 
 		gosub *sscaptcha
-		if (mode = 1 | mode = 2) {
+		if ((mode != 0)&(mode != modeOptionNum)) {
 			if autoaddcaptcha{
 				addfilename = sssavedir +"\\"+ savename
 				gosub *addcaptcha
@@ -1843,3 +1926,4 @@ return
 #include "SubSource_TwitterOperation.hsp"
 #include "SubSource_DrawString.hsp"
 #include "SubSource_make.hsp"
+#include "SubSource_VersionCheck.hsp"

@@ -14,7 +14,7 @@
 TsubuyakiSoup
 
 %ver
-2.0
+2.1
 
 %date
 2010/11/14
@@ -26,6 +26,8 @@ TsubuyakiSoup.asをインクルードすること。
 Win
 
 %*/
+
+#define global tCupVer "2.1"
 #include "mbase64.as"
 
 #include "encode.as"
@@ -85,6 +87,11 @@ Win
 #define CALG_SHA1                               (ALG_CLASS_HASH | ALG_TYPE_ANY | ALG_SID_SHA1)
 #define CALG_HMAC                               (ALG_CLASS_HASH | ALG_TYPE_ANY | ALG_SID_HMAC)
 #define CALG_RC2                                (ALG_CLASS_DATA_ENCRYPT|ALG_TYPE_BLOCK|ALG_SID_RC2)
+
+#define CRYPT_NEWKEYSET			$00000008
+#define CRYPT_VERIFYCONTEXT     $F0000000
+#define CRYPT_DELETEKEYSET		$00000010
+#define CRYPT_MACHINE_KEYSET	$00000020
 //
 #define INTERNET_OPEN_TYPE_DIRECT               1
 #define INTERNET_OPTION_CONNECT_TIMEOUT         2
@@ -207,7 +214,7 @@ TwitterAPI操作命令
 	accessToken = ""		// AccessToken
 	accessSecret = ""		// AccessTokenSecret
 	requestToken = ""		// RequestToken
-	rquestSecret = ""		// RequestTokenSecret
+	requestSecret = ""		// RequestTokenSecret
 	consumerKey = p2		// ConsumerKey
 	consumerSecret = p3		// ConsumerSecret
 	screenName = ""
@@ -285,7 +292,7 @@ TsubuyakiSoup補助関数
 
 %*/
 //------------------------------------------------------------
-#defcfunc getHmacSha1 str _p1, str _p2
+#deffunc getHmacSha1 str _p1, str _p2, var ghc_dest
 
 	ghc_p1 = _p1
 	ghc_p2 = _p2
@@ -308,43 +315,34 @@ TsubuyakiSoup補助関数
 	lpoke keyBlob, 8, ghc_p2Length
 	memcpy keyBlob, ghc_p2, ghc_p2Length, 12, 0
 
+	sdim ghc_dest, 20
+	ghc_dest = "Error"
+
 	//コンテキストの取得
-	if ( 1!_CryptAcquireContext(hProv, 0, 0, PROV_RSA_FULL, 0) ) {
-		return 0
-	}
-	//キーのインポート
-	if ( 1!_CryptImportKey(hProv, keyBlob, (12+ghc_p2Length), 0, CRYPT_IPSEC_HMAC_KEY, hKey) ) {
-		return 0
-	}
-	//ハッシュ初期化
-	if ( 1!_CryptCreateHash(hProv, CALG_HMAC, hKey, 0, hHash) ) {
-		return 0
-	}
-	//ハッシュパラメータの設定
-	if ( 1!_CryptSetHashParam(hHash, HP_HMAC_INFO, hmacInfo, 0) ) {
-		return 0
-	}
-	//ハッシュに書き込み
-	if ( 1!_CryptHashData(hHash, ghc_p1, strlen(ghc_p1), 0) ) {
-		return 0
-	}
-	//ハッシュ取得
-	if ( 1!_CryptGetHashParam(hHash, HP_HASHVAL, 0, ghc_dataLength, 0) ) {
-		return 0
-	}
-	
-	sdim ghc_dest, ghc_dataLength
-	if ( _CryptGetHashParam(hHash, HP_HASHVAL, varptr(ghc_dest), ghc_dataLength, 0) ) {
+	if ( _CryptAcquireContext(hProv, 0, 0, PROV_RSA_FULL, CRYPT_VERIFYCONTEXT) ) {
+		//キーのインポート
+		if ( _CryptImportKey(hProv, keyBlob, (12+ghc_p2Length), 0, CRYPT_IPSEC_HMAC_KEY, hKey) ) {
+			if ( _CryptCreateHash(hProv, CALG_HMAC, hKey, 0, hHash) ) {
+				if ( _CryptSetHashParam(hHash, HP_HMAC_INFO, hmacInfo, 0) ) {
+					if ( _CryptHashData(hHash, ghc_p1, strlen(ghc_p1), 0) ) {
+						if ( _CryptGetHashParam(hHash, HP_HASHVAL, 0, ghc_dataLength, 0) ) {
+							ghc_dest = ""
+							if ( _CryptGetHashParam(hHash, HP_HASHVAL, varptr(ghc_dest), ghc_dataLength, 0) ) {
+							}
+						}
+					}
+				}
+				//ハッシュハンドルの破棄
+				_CryptDestroyHash hHash
+			}
+			//キーハンドルの破棄
+			_CryptDestroyKey hKey
+		}
+		//ハンドルの破棄
+		_CryptReleaseContext hProv, 0
 	}
 
-	//ハッシュハンドルの破棄
-	_CryptDestroyHash hHash
-	//キーハンドルの破棄
-	_CryptDestroyKey hKey
-	//ハンドルの破棄
-	_CryptReleaseContext hProv, 0
-
-return ghc_dest
+return 
 //============================================================
 
 
@@ -387,9 +385,10 @@ TsubuyakiSoup補助関数
 	//URLエンコード
 	SigEnc = form_encode(SigTmp, 0)
 	SecretEnc = form_encode(SecretTmp, 0)
-	HmacSha1 = getHmacSha1(SigEnc, SecretEnc)
-	sdim base64HmacSha1,2*strlen(HmacSha1)
-	Base64Encode HmacSha1,strlen(HmacSha1),base64HmacSha1
+	getHmacSha1 SigEnc, SecretEnc, HmacSha1
+	if (HmacSha1 == "Error"):return "Error"
+	sdim base64HmacSha1,40
+	Base64Encode HmacSha1,20,base64HmacSha1
 return form_encode(str(base64HmacSha1), 0)
 //============================================================
 
