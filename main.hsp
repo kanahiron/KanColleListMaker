@@ -1,7 +1,7 @@
 /*
 * SoftWareName(Jp)	: 艦これ一覧めいかー
 * SoftWareName(En)	: KanColleListMaker
-* Version			: 1.2.4
+* Version			: 1.2.5
 * Author			: kanahiron
 * License			: MIT
 * Copyright(C) 2014 kanahiron
@@ -59,7 +59,7 @@
 #include "makelistmodule_Ver6_1.as"
 
 #pack "data.png"
-#packopt name "艦これ一覧めいかー Ver1_2_4"
+#packopt name "艦これ一覧めいかー Ver1_2_5"
 #packopt hide 1
 
 #define CELLWMAX 8
@@ -155,6 +155,8 @@
 	luposy = 0
 	rdposx = 0
 	rdposy = 0
+	dropwindowid = 0
+	dropf = 0
 	intervalsavedir = ""
 	savenamepath = ""
 	
@@ -202,7 +204,7 @@
 	mes string
 	
 	font "メイリオ",15,1
-	string = "艦これ一覧めいかー Ver1.2.4"
+	string = "艦これ一覧めいかー Ver1.2.5"
 	mref BMSCR, 67
 	x = 10
 	y = 310
@@ -219,6 +221,13 @@
 	pos x, y
 	mes string
 	
+	buffer 16,640,150
+	syscolor 16
+	font "メイリオ",25,1
+	mes "スクリーンショットをここにドラッグアンドドロップ"
+	mes "またはホットキー(Altキー＋Zキー同時押し)で
+	mes "                                         画像を追加してください"
+	mes "セルの画像はウィンドウ外にドラッグで消去できます"
 	
 	buffer 10,disinfo(2),disinfo(3)
 	
@@ -244,6 +253,7 @@
 	onclick gosub *listdrag
 	framesx = ginfo_sizex - ginfo_winx
 	framesy = ginfo_sizey - ginfo_winy
+	kmmouse_init
 	
 	//一覧モード出力用
 	buffer 2,disinfo(2),disinfo(3)
@@ -262,7 +272,7 @@
 	//縮小処理用
 	buffer 3,maxscrwh(0)/5,maxscrwh(1)/3
 	
-	screen 0,350,600:title "メイン"
+	screen 0,350,600:title "艦これ一覧めいかー Ver1.2.5"
 	hwnd0 = hwnd
 	DragAcceptFiles hwnd0, 0
 	oncmd gosub *OnDropFiles ,WM_DROPFILES
@@ -270,7 +280,7 @@
 	oncmd gosub *hotkey ,WM_HOTKEY
 	oncmd gosub *sscaptcha,0x0113
 	
-	color 240,240,240:boxf:color
+	syscolor 15:boxf:color
 	font "メイリオ",13
 	objmode 2
 	
@@ -365,6 +375,7 @@ return
 	
 	if mode = 1{
 	
+		gsel 0
 		lvnamef = lvname
 		
 		w = 0
@@ -380,6 +391,16 @@ return
 		page = stat & 0x01
 		sendmsg lvnamech, $F2
 		lvname = stat & 0x01
+	
+		if lvname = 1{
+			objenable yubiwacid,0
+			objenable kantaicid,0
+			objenable pagecid,0
+		} else {
+			objenable yubiwacid,1
+			objenable kantaicid,1
+			objenable pagecid,1
+		}
 		
 		if yubiwa = 0 & kantai = 0 : w = 382 : capx = 392
 		if yubiwa = 1 & kantai = 1 : w = 440 : capx = 360
@@ -515,7 +536,7 @@ return
 	gsel 1,-1
 	gsel 0,1+frontrow
 	clrobj 1
-	color 240,240,240:boxf:color
+	syscolor 15:boxf:color
 
 	mesy = 31
 	
@@ -584,12 +605,13 @@ return
 	chkbox "座標自動検索",autosearch:mesy+=20
 	pos 5,mesy
 	chkbox "提督名と司令部Lvを隠す",hidename:mesy+=20
+	hidenamebid = stat
 	
 	dispcapy = mesy
 	if dispcap {
-		color 200,200,200
+		syscolor 16
 		boxf 0,mesy,175,mesy+105
-		color 240,240,240
+		syscolor 15
 		boxf 3,mesy+3,171,mesy+101
 		color
 		mesy += 105
@@ -632,7 +654,7 @@ return
 
 	gsel 0,2
 	clrobj 1
-	color 240,240,240:boxf:color
+	syscolor 15:boxf:color
 	
 	objsize 175,20
 	
@@ -658,6 +680,16 @@ return
 		chkbox "レベルと艦名のみにする",lvname:mesy+=20
 		lvnamecid = stat
 		lvnamech = objinfo_hwnd(lvnamecid)
+	
+		if lvname = 1{
+			objenable yubiwacid,0
+			objenable kantaicid,0
+			objenable pagecid,0
+		} else {
+			objenable yubiwacid,1
+			objenable kantaicid,1
+			objenable pagecid,1
+		}
 		
 	}
 	if listmode = 1{
@@ -672,23 +704,34 @@ return
 		pos 5,mesy+1
 		mes "自動追加の方法":mesy+=18
 	
-		pos 7,mesy
-		chkbox "横2縦3",tuika1:mesy+=20
+		objsize 50,20
+		pos 27,mesy
+		chkbox "",tuika1
 		tuika1cid = stat
 		tuika1ch = objinfo_hwnd(tuika1cid)
 		SetWindowLong tuika1ch, -16, $50000009 | $20000
 	
-		pos 7,mesy
-		chkbox "横6縦1",tuika2:mesy+=20
+		pos 77,mesy
+		chkbox "",tuika2
 		tuika2cid = stat
 		tuika2ch = objinfo_hwnd(tuika2cid)
 		sendmsg tuika2ch, $F4, $9
 	
-		pos 7,mesy
-		chkbox "横1縦6",tuika3:mesy+=20
+		pos 132,mesy
+		chkbox "",tuika3:mesy+=17
 		tuika3cid = stat
 		tuika3ch = objinfo_hwnd(tuika3cid)
 		sendmsg tuika3ch, $F4, $9
+	
+		pos 10,mesy
+		mes "横2縦3"
+		pos 65,mesy
+		mes "横6縦1"
+		pos 120,mesy
+		mes "縦6横1"
+		mesy+=20
+	
+		objsize 175,20
 	
 		pos 5,mesy+1
 		mes "キャプチャ範囲":mesy+=18
@@ -774,7 +817,7 @@ return
 	gsel 1,-1
 	gsel 0,1+frontrow
 	clrobj 1
-	color 240,240,240:boxf:color
+	syscolor 15:boxf:color
 	
 	mesy = 30
 	pos 4,mesy
@@ -790,7 +833,7 @@ return
 	pos 5,mesy
 	chkbox "yabumiに自動でアップロードする",yabumiautoupload:mesy+=20
 	pos 5,mesy
-	chkbox "艦これ以外も手動で取得可能にする",othergame:mesy+=20
+	chkbox "艦これが等倍でなくも取得できるようにする(手動のみ)",othergame:mesy+=20
 	pos 5,mesy
 	chkbox "キャプチャのプレビューを有効にする",dispcap:mesy+=20
 	pos 5,mesy
@@ -877,8 +920,7 @@ return
 	if (yabumiautoupload = 1) & (availableyabumi = 1){
 		objenable yabumibid,0
 	}
-	wait 20
-	
+
 	gsel 10
 	redraw 0
 	BitBlt hdc,0,0, disinfo(2), disinfo(3), hdcScreen,  disinfo(0), disinfo(1),SRCCOPY
@@ -938,7 +980,7 @@ return
 	objenable comboxid,1
 	objenable sscapiid,1
 	
-	if ( (sscapwh(0) = 800) & (sscapwh(1) = 480) ) | ( (othergame=1) & (autosearch=0) ){
+	if ( (sscapwh(0) = 800) & (sscapwh(1) = 480) ) | ( (othergame=1) & (autosearch=0) & (sscapwh(0) >= 99) & (sscapwh(1) >= 59) ){
 		sscapmes = strf("%d,%d",sscap(0),sscap(1))
 		objprm sscapiid,sscapmes
 		objenable sscapbid,1
@@ -947,7 +989,6 @@ return
 		objprm logid,logmessage
 		availablecap = 1
 		objenable yabumibid,1
-
 		
 	} else {
 		sscapmes = "取得する"
@@ -965,12 +1006,18 @@ return
 		objenable sscapbid,1
 	}
 	
+	if (sscapwh(0) = 800) & (sscapwh(1) = 480){
+		objenable hidenamebid,1
+	} else {
+		objenable hidenamebid,0
+	}
+	
 	if hotkeyset = 1 & availablecap = 1 {
 		gsel 0,0
-		title "*メイン"
+		title "*艦これ一覧めいかー Ver1.2.5"
 	} else {
 		gsel 0,0
-		title "メイン"
+		title "艦これ一覧めいかー Ver1.2.5"
 	}
 
 
@@ -1061,27 +1108,9 @@ return
 	
 			//mxy はドラッグを話した時点の座標
 			//mxy_ はドラッグ開始の座標
-	
-			mxy(0) = mousex/cellsize(0,listmode) ,mousey/cellsize(1,listmode)
-	
-			if mxy(0) = erasecell(0,listmode) & mxy(1) = erasecell(1,listmode) & cliflag = 0{
-				
-				cliflag = 1
-				mxy_(0) = mxy(0),mxy(1)
-				dragdata = data(mxy(0),mxy(1),listmode)
-				mindexxy(0) = (mousex-(mxy_(0)*(cellsize(0,listmode)-1))),(mousey-(mxy_(1)*(cellsize(1,listmode)-1)))
-				
-				gsel 4
-				pos 0,0
-				gcopy 1,0,0,maxscrwh(0),maxscrwh(1)
-	
-				gsel 3
-				pos 0,0
-				gzoom cellsize(0,listmode),cellsize(1,listmode),7,ecdd(0,listmode),ecdd(1,listmode),ecdd(2,listmode),ecdd(3,listmode),1
-
-				gsel 1,0
-			}
 			
+			mxy(0) = limit(kmmousex/cellsize(0,listmode),0,cellnum(0,listmode)) ,limit(kmmousey/cellsize(1,listmode),0,cellnum(1,listmode))
+
 			if (data(mxy(0),mxy(1),listmode)) >= 100 & cliflag = 0{
 				
 				cliflag = 1
@@ -1114,27 +1143,28 @@ return
 		
 		if sti = 0 & cliflag = 1{
 	
-			if mxy_(0) = erasecell(0,listmode) & mxy_(1) = erasecell(1,listmode) {
-				erasecell(0,listmode) = mxy(0)
-				erasecell(1,listmode) = mxy(1)
-				if data(mxy(0),mxy(1),listmode) >= 100{
-					bc( data(mxy(0),mxy(1),listmode) - 100 ) = 0
-					data(mxy(0),mxy(1),listmode) = 0
+			//-----
+			if (kmmousex < 0) | (kmmousex > scrsize(0,listmode)) | (kmmousey < 0) | (kmmousey > scrsize(1,listmode)){
+				//マウス座標がウィンドウ外のとき
+				if data(mxy_(0),mxy_(1),listmode) >= 100{
+					bc( data(mxy_(0),mxy_(1),listmode) - 100 ) = 0
+					data(mxy_(0),mxy_(1),listmode) = 0
+					gsel 0
+					logmessage = "セル("+mxy_(0)+","+mxy_(1)+")を削除しました"
+					objprm logid,logmessage
+					gsel 1
+					
 				}
 			} else {
-				if mxy(0) = erasecell(0,listmode) & mxy(1) = erasecell(1,listmode) {
-					if data(mxy_(0),mxy_(1),listmode) >= 100{
-						bc( data(mxy_(0),mxy_(1),listmode) - 100 ) = 0
-						data(mxy_(0),mxy_(1),listmode) = 0
-					}
-				} else {
-					temp = data(mxy_(0),mxy_(1),listmode) 
-					data(mxy_(0),mxy_(1),listmode) = data(mxy(0),mxy(1),listmode)
-					data(mxy(0),mxy(1),listmode) = temp
-				}
-				
+				temp = data(mxy_(0),mxy_(1),listmode) 
+				data(mxy_(0),mxy_(1),listmode) = data(mxy(0),mxy(1),listmode)
+				data(mxy(0),mxy(1),listmode) = temp
+				gsel 0
+				logmessage = "セル("+mxy_(0)+","+mxy_(1)+")をセル("+mxy(0)+","+mxy(1)+")に移動しました"
+				objprm logid,logmessage
+				gsel 1
 			}
-
+	
 			mxy(0) = 0,0
 			mxy_(0) = 0,0
 			temp = 0
@@ -1207,7 +1237,7 @@ return
 	repeat cellnum(1,listmode)+1
 		ycnt = cnt
 		repeat cellnum(0,listmode)+1
-			if data(cnt,ycnt,listmode) >= 10{
+			if data(cnt,ycnt,listmode) >= 100{
 				pos cnt*w,ycnt*h
 				gsel data(cnt,ycnt,listmode)
 				if ginfo(13) = 450:cutf = 1
@@ -1227,8 +1257,10 @@ return
 				repeat 12
 					xcnt = (cnt/6)*2+cnt\2
 					ycnt = (cnt\6)/2
-					pos 200+w*xcnt,h*ycnt
-					gcopy 12,10+((cnt/6)*300),(cnt\6)*51,300,51
+					if data(xcnt,ycnt,listmode) >= 100{
+						pos 205+w*xcnt,h*ycnt+5
+						gcopy 12,10+((cnt/6)*310),(cnt\6)*51,310,51
+					}
 				loop
 			}
 	
@@ -1257,8 +1289,10 @@ return
 				repeat 12
 					xcnt = cnt\6
 					ycnt = cnt/6
-					pos 200+w*xcnt,h*ycnt
-					gcopy 12,10+((cnt/6)*300),(cnt\6)*51,300,51
+					if data(xcnt,ycnt,listmode) >= 100{
+						pos 205+w*xcnt,h*ycnt+5
+						gcopy 12,10+((cnt/6)*310),(cnt\6)*51,310,51
+					}
 				loop
 			}
 		
@@ -1279,8 +1313,10 @@ return
 				repeat 12
 					xcnt = cnt/6
 					ycnt = cnt\6
-					pos 200+w*xcnt,h*ycnt
-					gcopy 12,10+((cnt/6)*300),(cnt\6)*51,300,51
+					if data(xcnt,ycnt,listmode) >= 100{
+						pos 205+w*xcnt,h*ycnt+5
+						gcopy 12,10+((cnt/6)*310),(cnt\6)*51,310,51
+					}
 				loop
 			}
 		
@@ -1338,6 +1374,7 @@ return
 //ドロップ処理――――――――――――――――――――――――――――――――――
 *OnDropFiles
 	oncmd 0
+	dropwindowid = ginfo(24)
 	hdrop = wParam
 	sdim dropfile,260
 	DragQueryFile hdrop, 0, varptr(dropfile), 260
@@ -1350,6 +1387,7 @@ return
 		return
 	}
 	
+	dropf = 1
 	addfilename = dropfile
 	gosub *addcaptcha
 	oncmd 1
@@ -1359,8 +1397,7 @@ return
 	oncmd 0
 	gsel 1,0
 	
-	if (ginfo(24) = 1) | (autoaddcaptcha = 0){
-		//直接ドロップされた場合(割り込みがウィンドウ1か自動追加がオフ)
+	if (dropf = 1) & (dropwindowid = 1){
 		xcnt = mousex/cellsize(0,listmode) 
 		ycnt = mousey/cellsize(1,listmode)
 		dmxy(0) = xcnt, ycnt
@@ -1368,8 +1405,9 @@ return
 			dmxy(0) = xcnt, ycnt
 			bc(data(xcnt, ycnt,listmode)-100) = 0
 		}
-	} else {
-		//自動追加(割り込みがウィンドウ0か自動追加がオン)
+	}
+	if ((dropwindowid = 0) & (dropf = 1)) | ((autoaddcaptcha = 1)  & (dropf = 0)){
+
 		repeat
 			if listmode = 0{
 				ycnt = cnt\(cellnum(1,listmode)+1)
@@ -1400,8 +1438,11 @@ return
 				break
 			}
 		loop
-
+		
 	}
+	
+	dropwindowid = -1
+	dropf = 0
 
 	repeat (CELLWMAX*CELLHMAX*2)
 		if bc(cnt) = 0{
@@ -1412,12 +1453,24 @@ return
 	loop
 	
 	data(dmxy(0),dmxy(1),listmode) = bufid
-	ImgF_GetPicSize addfilename,picx,pixy
+	ImgF_GetPicSize addfilename,picx,picy
 	
-	buffer bufid,800,480
-	if pixy = 480:pos 0,0
-	if pixy = 450:pos 0,30
-	ImgF_PicloadEx addfilename,1
+	if (picx != 480) | (picy != 450){
+		buffer bufid,limit(picx,800,picx),limit(picy,480,picy)
+		ImgF_PicloadEx addfilename,1
+		gzoom 800,480,bufid,0,0,picx,picy,1
+	} else {
+		if picy = 480{
+			buffer bufid,800,480
+			pos 0,0
+			ImgF_PicloadEx addfilename,1
+		}
+		if picy = 450{
+			buffer bufid,800,450
+			pos 0,30
+			ImgF_PicloadEx addfilename,1
+		}
+	}
 
 	gsel 1
 	gosub *draw
@@ -1441,6 +1494,9 @@ return
 	boxf
 	color 150,150,150
 	
+	pos int(0.33333334*scrsize(0,listmode)),20
+	gzoom int(0.66666667*scrsize(0,listmode)),int(0.15625*scrsize(0,listmode)),16,0,0,640,150
+	
 	repeat cellnum(0,listmode),1
 		line  cnt*cellsize(0,listmode),-1,cnt*cellsize(0,listmode),maxscrwh(1)+1
 	loop
@@ -1448,9 +1504,6 @@ return
 		line  -1,cnt*cellsize(1,listmode),maxscrwh(0)+1,cnt*cellsize(1,listmode)
 	loop
 	
-	pos erasecell(0,listmode)*cellsize(0,listmode) ,erasecell(1,listmode)*cellsize(1,listmode)
-	gzoom cellsize(0,listmode),cellsize(1,listmode),7,ecdd(0,listmode),ecdd(1,listmode),ecdd(2,listmode),ecdd(3,listmode),1
-
 	repeat cellnum(1,listmode)+1
 		ycnt = cnt
 		repeat cellnum(0,listmode)+1
@@ -1460,7 +1513,6 @@ return
 			}
 		loop
 	loop
-	
 	
 	if (mode = 2) & rengoumode{
 		color 32,32,192
@@ -1600,7 +1652,7 @@ return 1
 		listsavedir = refstr
 		objprm listsdid,listsavedir
 	}
-
+	
 return
 
 *sssavedialog
@@ -1648,7 +1700,7 @@ return
 						frontrow=1
 						hidelog=0
 						yabumiautoupload=1
-						othergame=0
+						othergame=1
 						dispcap=1
 						hotkeycap=1
 						autoaddcaptcha=1
@@ -1860,7 +1912,7 @@ yubiwa=1
 	if (yabumiautoupload != 0) & (yabumiautoupload != 1):yabumiautoupload=1
 	WriteIni "Setting", "yabumiautoupload",yabumiautoupload
 	
-	if (othergame != 0) & (othergame != 1):othergame = 0
+	if (othergame != 0) & (othergame != 1):othergame = 1
 	WriteIni "Setting", "othergame",othergame
 	
 	if (dispcap != 0) & (dispcap != 1):dispcap=1
@@ -2032,10 +2084,10 @@ return
 
 	if hotkeyset = 1 & availablecap = 1 {
 		gsel 0,0
-		title "*メイン"
+		title "*艦これ一覧めいかー Ver1.2.5"
 	} else {
 		gsel 0,0
-		title "メイン"
+		title "艦これ一覧めいかー Ver1.2.5"
 	}
 	
 return
@@ -2077,3 +2129,36 @@ return
 		UnregisterHotKey hwnd0,HOTKEYID
 	}
 	end
+	
+#defcfunc existblock int ebint1
+	
+	if tuika1 {
+		count = 0
+		repeat 6,(ebint1*6)
+			xcnt = (((cnt\(6*(cellnum(0,listmode)+1)/2))/6)*2)+(cnt\2)
+			ycnt = ((cnt/((cellnum(0,listmode)+1)*3))*3)+((cnt\6)/2)
+			title ""+xcnt+" "+ycnt
+			if data(xcnt,ycnt,listmode) >= 100:count++
+		loop
+	}
+	
+	if tuika2 {
+		count = 0
+		repeat 6,(ebint1*6)
+			xcnt = cnt\6
+			ycnt = cnt/6
+			if data(xcnt,ycnt,listmode) >= 100:count++
+		loop
+	}
+	
+	if tuika3 {
+		count = 0
+		repeat 6,(ebint1*6)
+			xcnt = cnt/6
+			ycnt = cnt\6
+			if data(xcnt,ycnt,listmode) >= 100:count++
+		loop
+	}
+	
+	if count = 0:return 0
+return 1
