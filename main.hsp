@@ -1,12 +1,11 @@
 /*
 * SoftWareName(Jp)	: 艦これ一覧めいかー
 * SoftWareName(En)	: KanColleListMaker
-* Version			: 2.1.0.7
+* Version			: 2.5.0.1
 * Author			: kanahiron
 * License			: MIT
 * Copyright(C) 2014 kanahiron
 */
-
 
 #uselib "shlwapi.dll"
 #cfunc PathIsDirectory "PathIsDirectoryA" sptr
@@ -48,6 +47,9 @@
 #func global SetTimer "SetTimer" int,int,int,sptr
 #func global KillTimer "KillTimer" int,int
 
+#uselib "kernel32.dll"
+#func MultiByteToWideChar "MultiByteToWideChar" int,int,int,int,int,int
+
 #uselib "winmm.dll"
 #cfunc global timeGetTime "timeGetTime"
 
@@ -58,19 +60,23 @@
 #include "TsubuyakiSoup_mod.hsp"
 #include "key.hsp"
 
-;/*
-#include "makelistmodule_Ver6_3.as"
+#include "makelistmodule_Ver6_4.as"
 
 #pack "data2.png"
-#packopt name "艦これ一覧めいかー Ver2_1_0_7"
+#packopt name "艦これ一覧めいかー Ver2_5_0_1"
 #packopt hide 1
+#packopt orgpath 1
 
 #define CELLWMAX 8
 #define CELLHMAX 7
 #define HOTKEYID	7789
 #define timerID		100
+#define WM_LBUTTONDOWN	0x0201
 #define ctype round(%1) int(strf("%%0.0f", %1))
-#define SOFTNAME "艦これ一覧めいかー Ver2.1.0.7"
+#define SOFTNAME "艦これ一覧めいかー Ver2.5.0.1"
+
+#define nidpush nidindex++:nidstack(nidindex) = ginfo(3)
+#define nidpop gsel nidstack(nidindex),0:nidindex--
 
 	onexit gosub *en_d
 
@@ -90,6 +96,7 @@
 	jpgquality = 90
 	namecut = 0
 	hidelog = 0
+	hidelog_ = hidelog
 	jpgsave = 0
 	rapidshooting = 0
 	frontrow = 0
@@ -102,28 +109,26 @@
 	tempint = 0
 	tempstr = ""
 	currentdir = dir_cur
-	
-	dim memberlistxy,2
-	dim data,CELLWMAX,CELLHMAX,2
-	dim bc,(CELLWMAX*CELLHMAX*2)
-	dim dd,4,2
-	dim mesxy,2
-	dim maxscrwh,2
-	dim mindexxy,2
+
+	dim data,CELLWMAX,CELLHMAX,3
+	dim bc,(CELLWMAX*CELLHMAX*3)
+	dim dd,4,3
+	dim mesxy,3
+	dim maxscrwh,3
+	dim mindexxy,3
 	dim mxy,2
 	dim mxy_,2
 	dim dmxy,2
 	dim sscap,4
 	dim sscapwh,2
-	dim cellnum,2,2
-	dim erasecell,2,2
-	dim scrsize,2,2
-	dim cellsize,2,2
+	dim cellnum,2,3
+	dim scrsize,2,3
+	dim cellsize,2,3
 	dim tempmouse,2
 	dim disinfo,4
-	dim ecdd,4,2
-	
-	dim scrsizetemp,2,2
+	dim scrsizetemp,2,3
+	dim nidstack,100
+	nidindex = 0
 	
 	ddim Aspectratio,2
 	sdim sscapmes,256
@@ -140,17 +145,27 @@
 	sdim savelogtext,1024
 	sdim picStack,1024,4
 	sdim tweettext,200
+	sdim picHistory,512,101
 	cellnum(0,0) = 6,4
 	cellnum(0,1) = 5,5
-	ecdd(0,0) = 0,38,194,138
-	ecdd(0,1) = 0,176,228,182
-	erasecell(0,0) = 6,4
-	erasecell(0,1) = 5,2
+	cellnum(0,2) = 6,4
+
+	twiPicFrameXL = 185,250,315,380,184
+	twiPicFrameXR = 248,313,378,443,444
+	//twiPicFrameXL = 170,245,320,395,190
+	//twiPicFrameXR = 243,318,393,468,450
 	
-	xass = 171,320,171,320
-	yass = 11,11,106,106
-	twiOrder = 1,0,0,0
-	twiOrdercount = 1
+	//twiPicFrameXL = 380,315,250,185,184
+	//twiPicFrameXR = 443,378,313,248,444
+	twiPicFrameYU = 3 ,3 , 3, 3, 45
+	twiPicFrameYD = 42,42,42,42,209
+	twiOrder = 0,0,0,0
+	twiOrdercount = 0
+	
+	enableFirst = 1
+	enableSecond = 1
+	enableThread = 0
+	enableFourth = 0
 	
 	bc(0) = 0
 	maxscrwh(0) = int(0.8*ginfo(20)),int(0.8*ginfo(21))
@@ -167,146 +182,58 @@
 	luposy = 0
 	rdposx = 0
 	rdposy = 0
-	twijpg = 0
+	twijpg = 1
+	timersec = 5
 	dropwindowid = 0
 	dropf = 0
 	intervalsavedir = ""
 	savenamepath = ""
-	
-	userdata = ""
-	ACCESS_TOKEN = ""
-	ACCESS_SECRET = ""
+	intervalShotDir = ""
 	
 	fontname = "ＭＳ　ゴシック"
 	fontnum = "ＭＳ　ゴシック"
 	fontsizename = 34
 	fontsizenum = 34
-	fontcolornamestr = "FF0000"
-	fontcolornumstr = "0000FF"
-
+	fontColorFirstFleetStr = "FF0000"
+	fontColorSecondFleetStr = "0000FF"
+	fontColorThreadFleetStr = "20AC4C"
+	fontColorFourthFleetStr = "E06020"
+	
+	fontColorFirstFleet = int("$"+fontcolorFirstFleetstr)
+	fontColorSecondFleet = int("$"+fontcolorSecondFleetstr)
+	fontColorThreadFleet = int("$"+fontcolorThreadFleetstr)
+	fontColorFourthFleet = int("$"+fontcolorFourthFleetstr)
+	
 	FirstFleetName = "第一艦隊"
 	SecondFleetName = "第二艦隊"
+	ThreadFleetName = "ボス支援"
+	FourthFleetName = "道中支援"
+	
+	picHistoryNum = 0
+	mainWindowSmall = 0
+	
+	windowsSizeChangeBMes = "↑","↓"
+	autoSearchFailureCount = 0
+	
+	userdata = ""
+	ACCESS_TOKEN = ""
+	ACCESS_SECRET = ""
 	
 	tCupInit "KanColleListMaker", CONSUMER_KEY, CONSUMER_SECRET, 50
 	
-	scrsize(0,0) = limit(1358,210,round(0.66*maxscrwh(0))),scrsize(0,0)*aspectratio(0)
-	scrsize(0,1) = limit(1120,250,round(0.66*maxscrwh(0))),scrsize(0,1)*aspectratio(1)
+	scrsize(0,0) = limit(1358,210,round(0.4*maxscrwh(0))),scrsize(0,0)*aspectratio(0)
+	scrsize(0,1) = limit(1120,250,round(0.4*maxscrwh(0))),scrsize(0,1)*aspectratio(1)
 	scrsizetemp(0,0)  = scrsize(0,0),scrsize(1,0)
 	scrsizetemp(0,1)  = scrsize(0,1),scrsize(1,1)
 	
+	
 	gosub *iniload
-	gosub *inisave
+	gosub *dataCheck
 	gosub *disinfoinit
+	gosub *loadHistory
 	
-	buffer 12,700,340
-	//screen 12,700,340
-
-	font fontname,fontsizename,1
-	mref BMSCR, 67
-	r = 0.1 * abs(BMSCR.49)
-	n = int(2.0 * M_PI * r)
+	gosub *drawString
 	
-	x = 10
-	y = 10
-	string = FirstFleetName
-	color 
-	boxf
-	color 255,255,255
-	repeat n
-		rad = 2.0 * M_PI * cnt / n
-		xt = x + int(r * cos(rad))
-		yt = y + int(r * sin(rad))
-		pos xt, yt
-		mes string
-		pos xt+250, yt
-		mes string
-	loop
-	color ((fontcolorname&0x00FF0000)>>16),((fontcolorname&0x0000FF00)>>8),(fontcolorname&0x000000FF)
-	pos x, y
-	mes string
-	OSOWm = ginfo(15)
-
-	y = 110
-	x = 10
-	string = SecondFleetName
-	color 255,255,255
-	repeat n
-		rad = 2.0 * M_PI * cnt / n
-		xt = x + int(r * cos(rad))
-		yt = y + int(r * sin(rad))
-		pos xt, yt
-		mes string
-		pos xt+250, yt
-		mes string
-	loop
-	color ((fontcolornum&0x00FF0000)>>16),((fontcolornum&0x0000FF00)>>8),(fontcolornum&0x000000FF)
-	pos x, y
-	mes string
-
-	font fontnum,fontsizenum,1
-	mref BMSCR, 67
-	r = 0.1 * abs(BMSCR.49)
-	n = int(2.0 * M_PI * r)
-	
-	x = 510
-	y = 10
-	string = "1\n2\n3\n4\n5\n6"
-	color 255,255,255
-	repeat n
-		rad = 2.0 * M_PI * cnt / n
-		xt = x + int(r * cos(rad))
-		yt = y + int(r * sin(rad))
-		pos xt, yt
-		mes string
-		pos xt+50, yt
-		mes string
-	loop
-	color ((fontcolorname&0x00FF0000)>>16),((fontcolorname&0x0000FF00)>>8),(fontcolorname&0x000000FF)
-	pos x, y
-	mes string
-	OSOW = ginfo(15)
-
-	x = 610
-	y = 10
-	string = "1\n2\n3\n4\n5\n6"
-	color 255,255,255
-	repeat n
-		rad = 2.0 * M_PI * cnt / n
-		xt = x + int(r * cos(rad))
-		yt = y + int(r * sin(rad))
-		pos xt, yt
-		mes string
-		pos xt+50, yt
-		mes string
-	loop
-	color ((fontcolornum&0x00FF0000)>>16),((fontcolornum&0x0000FF00)>>8),(fontcolornum&0x000000FF)
-	pos x, y
-	mes string
-
-	font "メイリオ",15,1
-	mref BMSCR, 67
-	r = 0.1 * abs(BMSCR.49)
-	n = int(2.0 * M_PI * r)
-
-	x = 10
-	y = 310
-	string = SOFTNAME
-	color 255,255,255
-	repeat n
-		rad = 2.0 * M_PI * cnt / n
-		xt = x + int(r * cos(rad))
-		yt = y + int(r * sin(rad))
-		pos xt, yt
-		color 245,240,220
-		mes string
-		pos xt+230, yt
-		color 255,255,255
-		mes string
-	loop
-	color 170,60,70
-	pos x, y
-	mes string
-
 	buffer 16,640,150
 	syscolor 16
 	font "メイリオ",25,1
@@ -315,21 +242,12 @@
 	mes "                                         画像を追加してください"
 	mes "セルの画像はウィンドウ外にドラッグで消去できます"
 	
-	screen 19,480,250,2
+	screen 19,448,250,2
 	oncmd gosub *twiwindowimage,0x0201
-	objmode 2
-	title "ツイートウィンドウ"
-	font "メイリオ",12
-	pos 10,10
-	mesbox tweettext,150,230,1
-	ttid = stat
-	objsize 300,30
-	pos 170,210
-	font "メイリオ",22
-	button gosub "ツイート",*tweet_
-	tweetbid = stat
-
-	screen 17,,,2
+	oncmd gosub *rideCursor,WM_MOUSEMOVE
+	oncmd gosub *getText ,WM_COMMAND
+	oncmd gosub *OnDropFiles, WM_DROPFILES
+	hwnd19 = hwnd
 	
 	;screen 10,disinfo(2),disinfo(3)
 	buffer 10,disinfo(2),disinfo(3)
@@ -353,7 +271,7 @@
 	DragAcceptFiles hwnd1, 0
 	oncmd gosub *OnDropFiles, WM_DROPFILES
 	oncmd gosub *windowsize, WM_SIZING
-	onclick gosub *listdrag
+	oncmd gosub *listdrag, WM_LBUTTONDOWN
 	framesx = ginfo_sizex - ginfo_winx
 	framesy = ginfo_sizey - ginfo_winy
 	kmmouse_init
@@ -375,7 +293,7 @@
 	//縮小処理用
 	buffer 3,maxscrwh(0)/5,maxscrwh(1)/3
 	
-	screen 0,350,600,2:title SOFTNAME
+	screen 0,350,700,2:title SOFTNAME
 	hwnd0 = hwnd
 	DragAcceptFiles hwnd0, 0
 	oncmd gosub *OnDropFiles ,WM_DROPFILES
@@ -389,9 +307,11 @@
 	
 	objsize 175,30
 	pos 0,0
+	;combox cellmode,30,"  SSキャプチャモード\n  艦娘一覧モード\n  攻略編成モード\n  その他一覧作成モード\n  オプション"
 	combox cellmode,30,"  SSキャプチャモード\n  艦娘一覧モード\n  攻略編成モード\n  オプション"
 	comboxid = stat
 	hcombox = objinfo_hwnd(comboxid)
+	modeOptionNum = 3
 	objsize 0,0
 	button "dum_my",*adummy
 	
@@ -408,10 +328,9 @@
 	}
 
 	gosub *twiinit
-	gosub *TweetWindow
-	
+
 	if enabletweetwindow {
-		gsel 19,1+frontrow
+		gsel 19,1
 		gsel 0,1+frontrow
 	}
 
@@ -424,15 +343,14 @@
 
 	if (lparam = hcombox) & (((wparam>>16) & 0x0000FFFF) = 1){
 	
-		if mode = 1 | mode = 2{
+		if (mode != 0) & (mode != modeOptionNum) {
 			DragAcceptFiles hwnd1, 0
 			DragAcceptFiles hwnd0, 0
 			gsel 1,0
-			onclick 0
 		}
 	
-		if mode = 3{
-			gosub *inisave				
+		if mode = modeOptionNum{
+			gosub *dataCheck			
 			gosub *hotkeycapsetting
 			gosub *disinfoinit
 			gosub *twiinit
@@ -441,7 +359,7 @@
 		sendmsg hCombox, $147
 		mode = stat
 	
-		if mode = 1 | mode = 2{
+		if (mode != 0) & (mode != modeOptionNum) {
 			DragAcceptFiles hwnd1, 1
 			DragAcceptFiles hwnd0, 1
 		}
@@ -452,21 +370,20 @@
 		if mode = 1{
 			listmode = 0
 			gsel 1,0
-			onclick 1
 			gosub *list
 		}
 		if mode = 2{
 			listmode = 1
 			gsel 1,0
-			onclick 1
 			gosub *list
 		}
-		if mode = 3{
+		if mode = modeOptionNum{
 			gosub *option
 		}
+		
 	} else {
 	
-		if mode = 0{
+		if mode != modeOptionNum{
 
 			if (lparam = enabletweetwindowch){
 				sendmsg enabletweetwindowch, $F2
@@ -488,12 +405,13 @@
 		}
 	
 		if mode = 2{	
-			if (lparam = sosukach) | (lparam = sosuch) | (lparam = sokach) | (lparam = tuika1ch) | (lparam = tuika2ch) | (lparam = tuika3ch) | (lparam = tuika4ch) | (lparam = rengoumodech) | (lparam = listsize1ch) | (lparam = listsize2ch) {
+			if (lparam = sosukach) | (lparam = sosuch) | (lparam = sokach) | (lparam = tuika1ch) | (lparam = tuika2ch) | (lparam = tuika3ch) | (lparam = tuika4ch) | (lparam = fleetPunctuationch) | (lparam = listsize1ch) | (lparam = listsize2ch) {
 				gosub *listchange
 			}
 		}
 		
 	}
+	
 	
 	oncmd 1
 return
@@ -592,8 +510,8 @@ return
 		sendmsg listsize2ch, $F2
 		listsize2 = stat & 0x01
 	
-		sendmsg rengoumodech, $F2
-		rengoumode = stat & 0x01
+		sendmsg fleetPunctuationch, $F2
+		fleetPunctuation = stat & 0x01
 	
 		if sosuka {
 			w = 460
@@ -612,26 +530,6 @@ return
 	
 		dd(0,1) = capx,capy,w,h
 		cellratio = 1.0*h/w
-	
-		/*
-		if listsize1 {
-			if rengoumode = 0{
-				cellnum(0,1) = 3,2
-			}
-		} else {
-			if rengoumode = 0{
-				cellnum(0,1) = 5,5
-			}
-		}
-	
-		scrsize(0,1) = cellsize(0,1) * (cellnum(0,1)+1)
-		scrsize(1,1) = cellsize(1,1) * (cellnum(1,1)+1)
-	
-		
-	
-		gosub *draw
-	
-		;*/
 
 		if sosuka | soka{
 			if sosuf = 1{
@@ -687,39 +585,82 @@ return
 		pos 84+(manualposf*200),mesy+5
 		mes "x"
 		pos 0+(manualposf*200),mesy
-		input luposx,40,25,5
+		input luposx,40,23,5
 		luposxiid = stat
 		pos 40+(manualposf*200),mesy
-		input luposy,40,25,5
+		input luposy,40,23,5
 		luposyiid = stat
 		pos 95+(manualposf*200),mesy
-		input rdposx,40,25,5
+		input rdposx,40,23,5
 		rdposxiid = stat
 		pos 135+(manualposf*200),mesy
-		input rdposy,40,25,5
+		input rdposy,40,23,5
 		rdposyiid = stat
-		mesy+=25
+	
+		GetWindowLong objinfo(luposxiid,2), -16
+		SetWindowLong objinfo(luposxiid,2), -16, stat | $2
+		GetWindowLong objinfo(luposyiid,2), -16
+		SetWindowLong objinfo(luposyiid,2), -16, stat | $2
+		GetWindowLong objinfo(rdposxiid,2), -16
+		SetWindowLong objinfo(rdposxiid,2), -16, stat | $2
+		GetWindowLong objinfo(rdposyiid,2), -16
+		SetWindowLong objinfo(rdposyiid,2), -16, stat | $2
+		
+		mesy+=23
 	}
 	
-	objsize 150-(((yabumiautoupload = 1) & (availableyabumi = 1))*25),30
+	if mainWindowSmall {
+		mesaddx = 500
+		tempmesy = mesy
+	} else { 
+		mesaddx=0
+	}
+	
+	objsize 175,20
+	pos 5+mesaddx,mesy
+	chkbox "自動座標取得",autoSearch:mesy+=20
+	autoSearchCId = stat
+	pos 5+mesaddx,mesy
+	chkbox "提督名と司令部Lvを隠す",hidename:mesy+=20
+	hidenamebid = stat
+	pos 5+mesaddx,mesy
+	chkbox "ツイートウィンドウ表示",enabletweetwindow:mesy+=20
+	enabletweetwindowcid = stat
+	enabletweetwindowch = objinfo_hwnd(enabletweetwindowcid)
+	
+	if mainWindowSmall {
+		mesy = tempmesy + 1
+		syscolor 16
+		line 3,mesy,172,mesy
+		line 3,mesy+2,172,mesy+2
+		mesy += 4
+		color
+	}
+
+	objsize 130-(((yabumiautoupload = 1) & (availableyabumi = 1))*25),30
 	pos 0,mesy
-	button gosub "SSをキャプチャする",*sscaptcha
+	button gosub "SSキャプチャ",*sscaptcha
 	sscapbid = stat
 
 	objsize 25,30
-	pos 150-(((yabumiautoupload = 1) & (availableyabumi = 1))*25),mesy
+	pos 130-(((yabumiautoupload = 1) & (availableyabumi = 1))*25),mesy
 	button gosub "開",*sssavefopen
 	fopenbid = stat
 	
 	if ((yabumiautoupload = 1) & (availableyabumi = 1)) {
-		pos 150,mesy
+		pos 130,mesy
 	} else {
 		pos 200,mesy
 	}	
 	button gosub "UP",*yabumiupload
 	yabumibid = stat
 	
-	mesy+=29
+	pos 155,mesy
+	objsize 20,30
+	button gosub windowsSizeChangeBMes(mainWindowSmall),*windowsSizeChange
+	windowsSizeChangebid = stat
+	
+	mesy+=30
 	
 	pos 2+(disableseqcap*-175),mesy+2
 	mes "連続キャプチャ"
@@ -728,16 +669,6 @@ return
 	if disableseqcap = 0:mesy+=24
 	button gosub seqcapmes,*seqcap
 	seqcapbid = stat
-	
-	objsize 175,20
-	pos 5,mesy
-	chkbox "自動座標取得",autosearch:mesy+=20
-	pos 5,mesy
-	chkbox "提督名と司令部Lvを隠す",hidename:mesy+=20
-	hidenamebid = stat
-	chkbox "ツイートウィンドウ表示",enabletweetwindow:mesy+=20
-	enabletweetwindowcid = stat
-	enabletweetwindowch = objinfo_hwnd(enabletweetwindowcid)
 	
 	dispcapy = mesy
 	if dispcap {
@@ -749,7 +680,7 @@ return
 		mesy += 105
 	}
 
-	if hidelog = 0{
+	if hidelog_ = 0{
 		pos 0,mesy
 		mesy += 70
 	} else {
@@ -776,21 +707,44 @@ return
 	
 return
 
+*windowsSizeChange
+	if mainWindowSmall {
+		mainWindowSmall = 0
+		if hidelog = 0:hidelog_ = 0
+	} else {
+		mainWindowSmall = 1
+		if hidelog = 0:hidelog_ = 1
+	}
+	if mode = 0:gosub *ssmode
+	if (mode = 1 | mode = 2):gosub *list
+return
+
 //リストモード――――――――――――――――――――――――――――――――――
 *list
 	
 	mxy(0) = 0,0
 	mxy_(0) = 0,0
 	cliflag = 0
-	mesy = 28
+	mesy = 31
 
 	gsel 0,2
 	clrobj 1
 	syscolor 15:boxf:color
 	
+	pos 2,mesy
+	mes "キャプチャ座標"
+		
+	objsize 80,25
+	pos 95,mesy-3
+	button gosub sscapmes,*sssetting
+	sscapiid = stat
+	mesy+=25
+	
 	objsize 175,20
 	
-	if listmode = 0{	
+	if listmode = 0{
+	
+		width 175
 		
 		pos 5,mesy
 		chkbox "指輪も範囲に入れる",yubiwa:mesy+=20
@@ -825,12 +779,9 @@ return
 	}
 	if listmode = 1{
 	
-		mesy = mesy+2
-	
-		pos 5,mesy
-		chkbox "連合艦隊モード",rengoumode:mesy+=20
-		rengoumodecid = stat
-		rengoumodech = objinfo_hwnd(rengoumodecid)
+		width 350
+		
+		mesy2 = 5
 	
 		pos 5,mesy+1
 		mes "自動追加の方法":mesy+=20
@@ -882,9 +833,75 @@ return
 		chkbox "装備と艦娘の画像",soka:mesy+=21
 		sokacid = stat
 		sokach = objinfo_hwnd(sokacid)
-		sendmsg sokach, $F4, $9		
+		sendmsg sokach, $F4, $9
 	
+		pos 5,mesy
+		chkbox "艦隊区切り線を追加",fleetPunctuation:mesy+=20
+		fleetPunctuationCId = stat
+		fleetPunctuationCh = objinfo_hwnd(fleetPunctuationCId)
+		pos 5,mesy
+		chkbox "順番に番号を入れる",addOrderNum:mesy+=20
+		addOrderNumCId = stat	
+	
+		window2x = 175
+	
+		objsize 70,22
+		
+		pos window2x+5,mesy2+1
+		mes "艦隊名":mesy2+=20
+		
+		pos window2x+7,mesy2+1
+		chkbox "第一艦隊",enableFirst
+		pos window2x+80,mesy2
+		input FirstFleetName,95,22:mesy2+=22
+
+		pos window2x+7,mesy2+1
+		chkbox "第二艦隊",enableSecond
+		pos window2x+80,mesy2
+		input SecondFleetName,95,22:mesy2+=22
+
+		pos window2x+7,mesy2+1
+		chkbox "第三艦隊",enableThread
+		pos window2x+80,mesy2
+		input ThreadFleetName,95,22:mesy2+=22
+
+		pos window2x+7,mesy2+1
+		chkbox "第四艦隊",enableFourth
+		pos window2x+80,mesy2
+		input FourthFleetName,95,22:mesy2+=25
+
+		pos window2x+5,mesy2+1
+		mes "艦隊名文字色":mesy2+=20
+	
+		drawColorPos = mesy2
+		pos window2x+7,mesy2
+		button gosub "第一艦隊",*colorCange1:mesy2+=22
+
+		pos window2x+7,mesy2
+		button gosub "第二艦隊",*colorCange2:mesy2+=22
+
+		pos window2x+7,mesy2
+		button gosub "第三艦隊",*colorCange3:mesy2+=22
+		
+		pos window2x+7,mesy2
+		button gosub "第四艦隊",*colorCange4:mesy2+=22
+	
+		gosub *drawColor
+		
+
 	}
+
+	syscolor 16
+	line 3,mesy,172,mesy
+	color
+	mesy+=3
+	
+	objsize 175,20
+	
+	pos 7,mesy
+	chkbox "ツイートウィンドウ表示",enabletweetwindow:mesy+=20
+	enabletweetwindowcid = stat
+	enabletweetwindowch = objinfo_hwnd(enabletweetwindowcid)
 			
 	objsize 150-(((yabumiautoupload = 1) & (availableyabumi = 1))*25),30
 	pos 0,mesy
@@ -898,7 +915,7 @@ return
 	if ((yabumiautoupload = 1) & (availableyabumi = 1)) {
 		pos 150,mesy
 	} else {
-		pos 200,mesy
+		pos 500,mesy
 	}	
 	
 	button gosub "UP",*yabumiupload
@@ -910,7 +927,7 @@ return
 	mesbox logmessage,175,70,0 :mesy+=70
 	logid = stat
 	
-	width 175,mesy-(70*hidelog)
+	width ,mesy-(70*hidelog_)
 	
 	if IsWindowVisible(hwnd1) = 0{
 		gsel 1,1
@@ -984,31 +1001,33 @@ return
 	mes "1～100(大きいほど高画質)"
 	pos 100,mesy
 	input jpgquality,50,20,3:mesy+=20
+	jpgqualityiid = stat
+	GetWindowLong objinfo(jpgqualityiid,2), -16
+	SetWindowLong objinfo(jpgqualityiid,2), -16, stat | $2
 	
 	pos 5,mesy
 	chkbox "連続キャプチャを無効にする",disableseqcap:mesy+=20
-	
+
 	pos 5,mesy
 	mes "連続キャプチャの間隔"
 	pos 205,mesy
 	mes "x0.1秒 (0.1～99.9秒)"
 	pos 150,mesy
 	input timersec,50,20,3:mesy+=20
-	
-		a = "連携されていません"
+	timerseciid = stat
+	GetWindowLong objinfo(timerseciid,2), -16
+	SetWindowLong objinfo(timerseciid,2), -16, stat | $2
 	
 	pos 5,mesy+2
 	mes "Twitter連携"
-	;pos 100,mesy
-	;mesbox a,150,25,0
 	objsize 250,25
 	pos 100,mesy
-	button gosub "連携する",*twioauth
+	button gosub "認証情報をリセット",*twireset
 	mesy+=25
 	
 	objsize 350,20
 	pos 5,mesy
-	chkbox "Twitterにはjpgで投稿する(ネットが重い際にどうぞ)",twijpg:mesy+=20
+	chkbox "Twitterにはjpgで投稿する",twijpg:mesy+=20
 
 	objsize 150,20
 	pos 14,mesy
@@ -1028,6 +1047,15 @@ return
 	sssdid = stat
 	
 	pos 14,mesy
+	mes "連続撮影保存先"
+	pos 200,mesy
+	button gosub "連続撮影保存先変更",*intervalshotsavedialog:mesy+=20
+	pos 0,mesy
+	mesbox intervalShotDir,350,45,5,259:mesy+=45
+	intervalShotDirsdid = stat
+	
+	
+	pos 14,mesy
 	mes "YabumiUploader.exeの場所"
 	pos 200,mesy
 	button gosub "変更",*yabumiuploaderdialog:mesy+=20
@@ -1035,20 +1063,33 @@ return
 	mesbox yabumidir,350,45,5,259:mesy+=45
 	yabumiid = stat
 	
+	pos 0,mesy
+	objsize 350,20
+	button gosub "Amazonほしい物リスト",*Amazon:mesy+=20
+	//http://www.amazon.co.jp/wishlist/181BGDSFXZC6M/?sort=priority
+	
 	width 350,mesy
 
+return
+
+*Amazon
+	dialog "Amazonのほしい物リストだよ！\nぜひポチって支援してね！！！",2,"でちでち"
+	if stat = 6:exec "http://www.amazon.co.jp/wishlist/181BGDSFXZC6M/?sort=priority",16
 return
 
 
 //SSキャプチャセッティング――――――――――――――――――――――――――――――――――
 *sssetting
 	
+	gsel 0
 	objenable comboxid,0
-	objenable sscapbid,0
 	objenable sscapiid,0
-	objenable seqcapbid,0
-	if (yabumiautoupload = 1) & (availableyabumi = 1){
-		objenable yabumibid,0
+	if mode = 0{
+		objenable sscapbid,0
+		objenable seqcapbid,0
+		if (yabumiautoupload = 1) & (availableyabumi = 1){
+			objenable yabumibid,0
+		}
 	}
 
 	gsel 10
@@ -1102,7 +1143,7 @@ return
 	rdposy = sscap(3)
 	
 	gsel 0
-	if manualpos{
+	if manualpos & (mode = 0){
 		objprm luposxiid,luposx
 		objprm luposyiid,luposy
 		objprm rdposxiid,rdposx
@@ -1116,33 +1157,53 @@ return
 	if ( (sscapwh(0) = 800) & (sscapwh(1) = 480) ) | ( (othergame=1) & (autosearch=0) & (sscapwh(0) >= 99) & (sscapwh(1) >= 59) ){
 		sscapmes = strf("%d,%d",sscap(0),sscap(1))
 		objprm sscapiid,sscapmes
-		objenable sscapbid,1
-		objenable seqcapbid,1
+		
+		if mode = 0{
+			objenable sscapbid,1
+			objenable seqcapbid,1
+			objenable yabumibid,1
+		}
+		
 		logmessage = "座標の取得に成功しました"
 		objprm logid,logmessage
 		availablecap = 1
-		objenable yabumibid,1
+	
+		if autoSearch:autoSearchFailureCount = 0
 		
 	} else {
 		sscapmes = "取得する"
 		objprm sscapiid,sscapmes
-		objenable sscapbid,0
-		objenable seqcapbid,0
+		
+		if mode = 0{
+			objenable sscapbid,0
+			objenable seqcapbid,0
+			objenable yabumibid,0
+		}
+		
 		logmessage = "座標を取得できません\n詳細はreadmeをお読みください"
 		objprm logid,logmessage
 		availablecap = 0
-		objenable yabumibid,0
-
+	
+		if autoSearch{
+			autoSearchFailureCount++
+			if autoSearchFailureCount = 4{
+				dialog "自動取得に連続して失敗しました\n手動取得に切り替えもう一度座標取得しますか？",2,""
+				if stat = 7:autoSearchFailureCount = 0
+			}
+		}
+		
 	}
 	
-	if manualpos {
-		objenable sscapbid,1
-	}
-	
-	if (sscapwh(0) = 800) & (sscapwh(1) = 480){
-		objenable hidenamebid,1
-	} else {
-		objenable hidenamebid,0
+	if mode = 0 {
+		if manualpos {
+			objenable sscapbid,1
+		}
+		
+		if (sscapwh(0) = 800) & (sscapwh(1) = 480){
+			objenable hidenamebid,1
+		} else {
+			objenable hidenamebid,0
+		}
 	}
 	
 	if hotkeyset = 1 & availablecap = 1 {
@@ -1153,6 +1214,14 @@ return
 		title SOFTNAME
 	}
 
+	if autoSearch {
+		if autoSearchFailureCount = 4{
+			autoSearchFailureCount = 0
+			autoSearch = 0
+			objprm autoSearchCId,autoSearch
+			gosub *sssetting
+		}
+	}
 
 return
 
@@ -1203,34 +1272,33 @@ return
 		savenamepath = sssavedir +"\\"+ savename
 		gdiimagesave sssavedir +"\\"+ savename,jpgquality
 	} else {
-		savenamepath = getpath(sssavedir,32)+"IntervalShots\\"+intervalsavedir+"\\" +savename
-		gdiimagesave getpath(sssavedir,32)+"IntervalShots\\"+intervalsavedir+"\\" +savename,jpgquality
+		savenamepath = intervalShotDir+"\\"+intervalsavedir+"\\" +savename
+		gdiimagesave intervalShotDir+"\\"+intervalsavedir+"\\" +savename,jpgquality
 	}
 	
 	gsel 0
 	
-	if kmexist(savenamepath) <= 0{
-		logmessage = savename+"の保存に失敗しました"
-	} else {
-		logmessage = savename+"を保存しました"
-		if dispcap & (mode = 0){
-			pos 0,dispcapy
-			gzoom 175,105,5,0,0,sscapwh(0),sscapwh(1),1
+	if mode != modeOptionNum{
+		if kmexist(savenamepath) <= 0{
+			logmessage = savename+"の保存に失敗しました"
+		} else {
+			logmessage = savename+"を保存しました"
+			if dispcap & (mode = 0){
+				pos 0,dispcapy
+				gzoom 175,105,5,0,0,sscapwh(0),sscapwh(1),1
+			}
+			
+			if (seqcapf = 0) {
+				i = 99
+				repeat 99
+					PicHistory(i) = PicHistory(i-1)
+					i--
+				loop
+				PicHistory(0) = savenamepath 
+				gosub *TweetWindow
+			}
+			
 		}
-		
-		if (seqcapf = 0) & (mode = 0) {
-			i = 3
-			repeat 3
-				PicStack(i) = PicStack(i-1)
-				i--
-			loop
-			PicStack(0) = savenamepath 
-			gosub *TweetWindow
-		}
-		
-	}
-	
-	if mode != 3{
 		objprm logid,logmessage
 	}
 
@@ -1240,10 +1308,11 @@ return
 
 *listdrag
 
-	onclick 0
+	oncmd 0
+
+	if ginfo(24) = 1 {
 	
-	if ginfo(3) = 1 {
-	
+		gsel 1
 		dragdata = 0
 		repeat
 			stick sti,256
@@ -1314,319 +1383,57 @@ return
 	}
 	
 
-	onclick 1
-	
-return
-
-*twiwindowimage
-	oncmd 0
-	
-	if ginfo(24) = 19{
-	
-		nid = ginfo(3)
-		mx = lParam & 0x0000FFFF;         // カーソルx座標
-		my = (lParam >> 16) & 0x0000FFFF;  // カーソルy座標
-	
-		gsel 19
-
-	
-		twiOrderPos = -1
-		repeat 4
-			if (xass(cnt) <= mx) & (mx <= xass(cnt)+144) & (yass(cnt) <= my) & (my <= yass(cnt)+90) {
-				twiOrderPos = cnt
-			}
-		loop
-	
-		if twiOrderPos != -1{
-				
-			if twiOrder(twiOrderPos) = 0{
-				twiOrdercount++
-				twiOrder(twiOrderPos) = twiOrdercount
-			} else {
-				temp = twiOrder(twiOrderPos)
-				twiOrder(twiOrderPos) = 0
-				twiOrdercount--
-				repeat 4
-					if temp <= twiOrder(cnt):twiOrder(cnt)--
-				loop		
-			}
-		}
-
-		gosub *TweetWindow
-	
-		gsel nid
-	}
 	oncmd 1
-return
-
-//一覧作成――――――――――――――――――――――――――――――――――
-*make
-	
-	yoko = 0
-	tate = 0
-	capx = 0
-	capy = 0
-	w = 0
-	h = 0
-	
-	repeat cellnum(1,listmode)+1
-		ycnt = cnt
-		repeat cellnum(0,listmode)+1
-			if data(cnt,ycnt,listmode) >= 100{
-				if yoko <= cnt:yoko = cnt
-				if tate <= ycnt:tate = ycnt
-			}
-		loop
-	loop
-	yoko++
-	tate++
-	
-	if listmode = 0{
-		if yubiwa = 0 & kantai = 0 : w = 382 : capx = 392
-		if yubiwa = 1 & kantai = 1 : w = 440 : capx = 360
-		if yubiwa = 1 & kantai = 0 : w = 408 : capx = 392
-		if yubiwa = 0 & kantai = 1 : w = 415 : capx = 360
-		if page = 0:h = 279
-		if page = 1:h = 315
-		if lvname = 1:w = 190: capx = 392:h = 279
-		capy = 154
-	} else {
-		if sosuka {
-			w = 460
-			h = 365
-		}
-		if sosu {
-			w = 230
-			h = 365	
-		}
-		if soka {
-			w = 460
-			h = 195
-		}
-		capx = 327
-		capy = 103
-	}
-	
-	buffer 2,w*yoko,h*tate
-	drawcount = 0
-	repeat cellnum(1,listmode)+1
-		ycnt = cnt
-		repeat cellnum(0,listmode)+1
-			if data(cnt,ycnt,listmode) >= 100{
-				pos cnt*w,ycnt*h
-				gcopy data(cnt,ycnt,listmode),capx,capy,w,h 
-				drawcount++
-			}
-		loop
-	loop
-		
-	if (rengoumode=1) & (listmode=1){
-		if tuika1 {
-			if sosuka | soka{
-				gsel 2
-				gmode 7
-				repeat 12
-					xcnt = (cnt/6)*2+cnt\2
-					ycnt = (cnt\6)/2
-					if data(xcnt,ycnt,listmode) >= 100{
-						if ((ycnt == 0) & (xcnt\2 == 0)){
-							//艦隊名をはりはり
-							pos 205+w*xcnt,h*ycnt+5
-							gcopy 12,0,10+(xcnt/2)*100,250,OSOWm+10
-						}
-						pos 205+w*xcnt+220,h*ycnt+5
-						gcopy 12,500+((cnt/6)*100),10+(cnt\6)*OSOW,50,OSOW
-					}
-				loop
-			}
-	
-			buffer 15,w*yoko+(3*((yoko/2)+(yoko\2)-1)),h*tate+(3*(tate/4))
-			gmode 0
-			pos 0,0
-			gcopy 2,0,0,w*2,h*tate
-			pos w*2+3,0
-			gcopy 2,w*2,0,w*2,h*tate
-			pos w*4+6,0
-			gcopy 2,w*4,0,w*2,h*tate
-			pos 0,h*3+3
-			gcopy 15,0,h*3,w*6+6,h*3
-	
-			color 32,32,192
-			boxf 0,h*3,w*6+6,h*3+2
-			boxf w*2,0,w*2+2,h*tate+3
-			boxf w*4+3,0,w*4+5,h*tate+3
-				
-		}
-	
-		if tuika4 {
-			if sosuka | soka{
-				gsel 2
-				gmode 7
-				repeat 12
-					xcnt = (cnt/6)*3+cnt\3
-					ycnt = (cnt\6)/3
-					if data(xcnt,ycnt,listmode) >= 100{
-						if ((ycnt == 0) & (xcnt\3 == 0)){
-							//艦隊名をはりはり
-							pos 205+w*xcnt,h*ycnt+5
-							gcopy 12,0,10+(xcnt/3)*100,250,OSOWm+10
-						}
-						pos 205+w*xcnt+220,h*ycnt+5
-						gcopy 12,500+((cnt/6)*100),10+(cnt\6)*OSOW,50,OSOW
-					}
-				loop
-			}
-	
-			buffer 15,w*yoko+((yoko/4)*3),h*tate+(((tate+1)/2)-1)*3
-			gmode 0
-			
-			pos 0,0
-			gcopy 2,0,0,w*3,h*tate
-			pos w*3+3,0
-			gcopy 2,w*3,0,w*3,h*tate	
-			pos 0,h*2+3
-			gcopy 15,0,h*2,w*6+3,h*4
-			pos 0,h*4+6
-			gcopy 15,0,h*4+3,w*6+3,h*2
-	
-			color 32,32,192
-			boxf w*3,0,w*3+2,h*6+6
-			boxf 0,h*2,w*6+6,h*2+2
-			boxf 0,h*4+3,w*6+6,h*4+5
-				
-		}
-	
-		if tuika2 {
-	
-			if sosuka | soka {
-				gsel 2
-				gmode 7
-				repeat 12
-					xcnt = cnt\6
-					ycnt = cnt/6
-					if data(xcnt,ycnt,listmode) >= 100{
-						if (xcnt == 0){
-							//艦隊名をはりはり
-							pos 205+w*xcnt,h*ycnt+5
-							gcopy 12,0,10+ycnt*100,250,OSOWm+10
-						}
-						pos 205+w*xcnt+220,h*ycnt+5
-						gcopy 12,500+((cnt/6)*100),10+(cnt\6)*OSOW,50,OSOW
-					}
-				loop
-			}
-		
-			buffer 15,w*yoko,h*tate+(3*(tate-1))
-			gmode 0
-			color 32,32,192
-			boxf
-			
-			repeat 6
-				pos 0,(cnt*h)+(cnt*3)
-				gcopy 2,0,h*cnt,w*6,h
-			loop
-		}
-		if tuika3 {
-	
-			if sosuka | soka {
-				gsel 2
-				gmode 7
-				repeat 12
-					xcnt = cnt/6
-					ycnt = cnt\6
-					if data(xcnt,ycnt,listmode) >= 100{
-						if (ycnt == 0){
-							//艦隊名をはりはり
-							pos 205+w*xcnt,h*ycnt+5
-							gcopy 12,0,10+xcnt*100,250,OSOWm+10
-						}
-						pos 205+w*xcnt+220,h*ycnt+5
-						gcopy 12,500+((cnt/6)*100),10+(cnt\6)*OSOW,50,OSOW
-					}
-				loop
-			}
-		
-			buffer 15,w*yoko+(3*(yoko-1)),h*tate
-			gmode 0
-			color 32,32,192
-			boxf
-			
-			repeat 6
-				pos (cnt*w)+(cnt*3),0
-				gcopy 2,w*cnt,0,w,h*6
-			loop
-		}
-	}
-	
-	if senden & (listmode=1) & (sosuka|soka){
-		gmode 7
-		pos ginfo_winx-225,ginfo_winy-18
-		gcopy 12,10,310,230,30
-	}
-		
-	savename = ""
-	if drawcount != 0{
-		repeat
-			savename = strf("%s_%03d%s",modemes(listmode+1),cnt,savekind(jpgsave))
-			if kmexist(listsavedir +"\\"+ savename) = -1{
-				gdiimagesave listsavedir +"\\"+ savename,jpgquality
-				break
-			}
-		loop
-		
-		gsel 0,2
-			
-		if kmexist(listsavedir +"\\"+ savename) <= 0{
-			logmessage = savename+"の保存に失敗しました"
-			objprm logid,logmessage
-		} else {
-			logmessage = savename+"を保存しました"
-			objprm logid,logmessage
-	
-			//=============
-			i = 3
-			repeat 3
-				PicStack(i) = PicStack(i-1)
-				i--
-			loop
-			PicStack(0) = listsavedir +"\\"+ savename
-			gosub *TweetWindow
-	
-		}
-	
-	} else {
-		gsel 0,2
-		logmessage = "画像が一枚もありません"
-		objprm logid,logmessage
-	}
-
-
-	dim data,CELLWMAX,CELLHMAX,2
-	dim bc,(CELLWMAX*CELLHMAX*2)
-	
-	gosub *draw
 	
 return
 
 //ドロップ処理――――――――――――――――――――――――――――――――――
 *OnDropFiles
 	oncmd 0
-	dropwindowid = ginfo(24)
-	hdrop = wParam
-	sdim dropfile,260
-	DragQueryFile hdrop, 0, varptr(dropfile), 260
-	DragFinish hdrop
-	if peek(dropfile,0) = '"' : getstr dropfile, dropfile, 1, '"'
+	if (ginfo(24) = 0) | (ginfo(24) = 1){
+		nidPush
+		dropwindowid = ginfo(24)
+		hdrop = wParam
+		sdim dropfile,260
+		DragQueryFile hdrop, 0, varptr(dropfile), 260
+		DragFinish hdrop
+		if peek(dropfile,0) = '"' : getstr dropfile, dropfile, 1, '"'
+		
+		if ImgF_GetFormat(dropfile) = 0{
+			nidPop
+			return
+		}
 	
-	if ImgF_GetFormat(dropfile) = 0{
-		dropf = 0
-		gsel 1
-		return
+		addfilename = dropfile
+		gosub *addcaptcha
+		nidPop
 	}
+	if ginfo(24) = 19{
+		nidPush
+	
+		hdrop = wParam
+		sdim dropfile,260
+		DragQueryFile hdrop, 0, varptr(dropfile), 260
+		DragFinish hdrop
+		if peek(dropfile,0) = '"' : getstr dropfile, dropfile, 1, '"'
+		
+		if ImgF_GetFormat(dropfile) = 0{
+			nidPop
+			return
+		}
 
-	addfilename = dropfile
-	dropf = 1
-	gosub *addcaptcha
+		i = 99
+		repeat 99
+			PicHistory(i) = PicHistory(i-1)
+			i--
+		loop
+		PicHistory(0) = dropfile
+	
+		gosub *tweetWindow
+	
+		nidPop
+	
+	}
 	oncmd 1
 return
 
@@ -1682,10 +1489,8 @@ return
 		loop
 		
 	}
-	
-	dropf = 0
 
-	repeat (CELLWMAX*CELLHMAX*2)
+	repeat (CELLWMAX*CELLHMAX*3)
 		if bc(cnt) = 0{
 			bc(cnt) = 1
 			bufid = cnt +100
@@ -1694,40 +1499,23 @@ return
 	loop
 	
 	data(dmxy(0),dmxy(1),listmode) = bufid
-	
-	;if ((autoaddnonsave = 0) & ( hotkeyaddf = 0)){
-		ImgF_GetPicSize addfilename,picx,picy
-	;} else {
-	;	picx = sscapwh(0)
-	;	picy = sscapwh(1)
-	;}
-	
+	ImgF_GetPicSize addfilename,picx,picy
+
 	if (picx != 480) & (picy != 450){
 		buffer bufid,limit(picx,800,picx),limit(picy,480,picy)
-		;if ((autoaddnonsave = 0) & ( hotkeyaddf = 0)) {
-			ImgF_PicloadEx addfilename,1
-		;} else {
-		;	gcopy 5,0,0,picx,picy
-		;}
+		ImgF_PicloadEx addfilename,1
 		gzoom 800,480,bufid,0,0,picx,picy,1
 	} else {
 		if picy = 480{
 			buffer bufid,800,480
 			pos 0,0
-			;if ((autoaddnonsave = 0) & ( hotkeyaddf = 0)) {
-				ImgF_PicloadEx addfilename,1
-			;} else {
-			;	gcopy 5,0,0,picx,picy
-			;}
+			ImgF_PicloadEx addfilename,1
+
 		}
 		if picy = 450{
 			buffer bufid,800,480
 			pos 0,30
-			;if ((autoaddnonsave = 0) & ( hotkeyaddf = 0)) {
-				ImgF_PicloadEx addfilename,1
-			;} else {
-			;	gcopy 5,0,0,picx,picy
-			;}
+			ImgF_PicloadEx addfilename,1
 		}
 	}
 
@@ -1774,7 +1562,7 @@ return
 		loop
 	loop
 	
-	if (mode = 2) & rengoumode{
+	if (mode = 2) & fleetPunctuation{
 		color 32,32,192
 		if tuika1 {
 			boxf  2*cellsize(0,listmode)-1, -1, 2*cellsize(0,listmode)+1, maxscrwh(1)+1
@@ -1817,16 +1605,16 @@ return
 	if seqcapf = 0{
 		SetTimer hwnd0,timerID,100*timersec,0
 		seqcapmes = "停止"
-		objprm seqcapbid,seqcapmes
+		objprm seqcapBId,seqcapmes
 		objenable comboxid,0
-		objenable sscapbid,0
+		objenable sscapBId,0
 		objenable sscapiid,0
-		objenable yabumibid,0
+		objenable yabumiBId,0
 		seqcapf = 1
 	
-		chdir getpath(sssavedir,32)+"IntervalShots"
-		intervalsavedir =  strf("%04d%02d%02d-%02d%02d%02d",gettime(0),gettime(1),gettime(3),gettime(4),gettime(5),gettime(6))
-		if PathIsDirectory(getpath(sssavedir,32)+"IntervalShots\\"+intervalsavedir) = 0 {
+		chdir intervalShotDir
+		intervalsavedir =  strf("IntervalShot%04d%02d%02d-%02d%02d%02d",gettime(0),gettime(1),gettime(3),gettime(4),gettime(5),gettime(6))
+		if PathIsDirectory(intervalShotDir+"\\"+intervalsavedir) = 0 {
 			mkdir intervalsavedir
 		}
 		chdir currentdir
@@ -1835,11 +1623,11 @@ return
 	} else {
 		KillTimer hwnd0,timerID
 		seqcapmes = "開始"
-		objprm seqcapbid,seqcapmes
+		objprm seqcapBId,seqcapmes
 		objenable comboxid,1
-		objenable sscapbid,1
+		objenable sscapBId,1
 		objenable sscapiid,1
-		objenable yabumibid,1
+		objenable yabumiBId,1
 		seqcapf = 0
 	}
 	
@@ -1862,11 +1650,10 @@ return
 //ホットキー――――――――――――――――――――――――――――――――――
 *hotkey
 	oncmd 0
-	nid = ginfo(3)
+	nidpush
 	
 	if (wparam = HOTKEYID) & (availablecap = 1){
 
-		;if (autoaddcaptcha & autoaddnonsave) :hotkeyaddf = 1
 		gosub *sscaptcha
 		if (mode = 1 | mode = 2) {
 			if autoaddcaptcha{
@@ -1876,7 +1663,8 @@ return
 		}
 		await 16
 	}
-	gsel nid
+	
+	nidpop
 	oncmd 1
 return
 
@@ -1927,10 +1715,20 @@ return
 
 *sssavedialog
 	
-	BrowseFolder "SSのキャプチャ保存先",(dir_exe+"\\ScreenShots")
+	BrowseFolder "SSキャプチャの保存先",(dir_exe+"\\ScreenShots")
 	if stat = 1{
 		sssavedir = refstr
 		objprm sssdid,sssavedir
+	}
+
+return
+
+*intervalshotsavedialog
+	
+	BrowseFolder "連続撮影の保存先",(dir_exe+"\\ScreenShots")
+	if stat = 1{
+		intervalShotDir = refstr
+		objprm intervalShotDirsdid,intervalShotDir
 	}
 
 return
@@ -1951,433 +1749,6 @@ return
 
 *sssavefopen
 	exec sssavedir,16
-return
-
-*iniload
-	
-	SetIni (dir_exe+"\\makelist.ini")
-	if stat = 1{
-		sdim settingstr,1024
-	
-		settingstr = {"
-						[Setting]
-						yubiwa=1
-						kantai=1
-						page=0
-						autosearch=1
-						hidename=0
-						namecut=0
-						frontrow=1
-						hidelog=0
-						yabumiautoupload=1
-						othergame=1
-						dispcap=1
-						hotkeycap=1
-						autoaddcaptcha=1
-						jpgsave=0
-						jpgquality=90
-						disableseqcap=1
-						timersec=0
-						listsavedir=
-						sssavedir=
-						yabumidir=
-						hotkeystr=A___Z
-						
-						[Setting122]
-						manualpos=0
-						lvname=0
-						rengoumode=0
-						senden=1
-						tuika1=1
-						tuika2=0
-						tuika3=0
-						sosuka=1
-						sosu=0
-						soka=0
-	
-						[Setting130]
-						Twi_userdata=
-						Twi_ACCESS_TOKEN=
-						Twi_ACCESS_SECRET=
-						enabletweetwindow=0
-						twijpg=0
-						tuika4=0
-	
-						[Setting200]
-						fontname = ＭＳ　ゴシック
-						fontnum = ＭＳ　ゴシック
-						fontsizename = 34
-						fontsizenum = 34
-						fontcolornamestr = FF0000
-						fontcolornumstr = 0000FF
-						FirstFleetName = 第一艦隊
-						SecondFleetName = 第二艦隊
-						"}
-
-		bsave (dir_exe+"\\makelist.ini"),settingstr,strlen(settingstr)+1024
-	}
-	
-	GetIni "Setting", "yubiwa", yubiwa
-	GetIni "Setting", "kantai", kantai
-	GetIni "Setting", "page", page
-	GetIni "Setting", "autosearch", autosearch
-	GetIni "Setting", "hidename", hidename
-	GetIni "Setting", "namecut", namecut
-	GetIni "Setting", "frontrow", frontrow
-	GetIni "Setting", "hidelog", hidelog	
-	GetIni "Setting", "yabumiautoupload", yabumiautoupload
-	GetIni "Setting", "othergame", othergame
-	GetIni "Setting", "dispcap", dispcap
-	GetIni "Setting", "hotkeycap", hotkeycap
-	GetIni "Setting", "autoaddcaptcha", autoaddcaptcha
-	GetIni "Setting", "jpgsave", jpgsave
-	GetIni "Setting", "jpgquality", jpgquality
-	GetIni "Setting", "disableseqcap", disableseqcap
-	GetIni "Setting", "timersec", timersec
-	GetIni "Setting", "listsavedir", listsavedir
-	GetIni "Setting", "sssavedir", sssavedir
-	GetIni "Setting", "yabumidir", yabumidir
-	GetIni "Setting", "hotkeystr", hotkeystr
-	
-	GetIni "Setting122", "lvname", lvname
-	GetIni "Setting122", "rengoumode", rengoumode
-	GetIni "Setting122", "senden", senden
-	GetIni "Setting122", "tuika1", tuika1
-	GetIni "Setting122", "tuika2", tuika2
-	GetIni "Setting122", "tuika3", tuika3
-	GetIni "Setting122", "sosuka", sosuka
-	GetIni "Setting122", "sosu", sosu
-	GetIni "Setting122", "soka", soka
-	GetIni "Setting122", "manualpos", manualpos
-	
-		;*/
-	sdim temp,256
-	GetIni "Setting130", "Twi_userdata",temp
-	userdata = decstr(temp)
-	GetIni "Setting130", "Twi_ACCESS_TOKEN",temp
-	ACCESS_TOKEN = decstr(temp)
-	GetIni "Setting130", "Twi_ACCESS_SECRET",temp
-	ACCESS_SECRET = decstr(temp)
-	
-	GetIni "Setting130", "enabletweetwindow",enabletweetwindow
-	GetIni "Setting130", "twijpg",twijpg
-	GetIni "Setting130", "tuika4", tuika4
-	
-	GetIni "Setting200", "fontname", fontname
-	GetIni "Setting200", "fontnum", fontnum
-	GetIni "Setting200", "fontsizename", fontsizename
-	GetIni "Setting200", "fontsizenum", fontsizenum
-	GetIni "Setting200", "fontcolornamestr", fontcolornamestr
-	GetIni "Setting200", "fontcolornumstr", fontcolornumstr
-	GetIni "Setting200", "FirstFleetName", FirstFleetName
-	GetIni "Setting200", "SecondFleetName", SecondFleetName
-	
-	fontcolorname = int("$"+fontcolornamestr)
-	fontcolornum = int("$"+fontcolornumstr)
-
-	if (tuika1+tuika2+tuika3+tuika4) != 1{
-		tuika1 = 1
-		tuika2 = 0
-		tuika3 = 0
-		tuika4 = 0
-	}
-	
-	if (sosuka+sosu+sosk) != 1{
-		sosuka = 1
-		sosu = 0
-		soka = 0
-	}
-	
-	if PathIsDirectory(listsavedir) = 0{
-		listsavedir = dir_exe
-		WriteIni "Setting", "listsavedir", listsavedir
-	}
-
-	if PathIsDirectory(sssavedir) = 0{
-		sssavedir = dir_exe+"\\ScreenShots"
-		if PathIsDirectory(sssavedir) = 0{
-			chdir dir_exe
-			mkdir "ScreenShots"
-		}
-		WriteIni "Setting", "sssavedir", sssavedir
-	}
-	
-	if PathIsDirectory(getpath(sssavedir,32)+"intervalShots") = 0{
-		chdir getpath(sssavedir,32)
-		mkdir "intervalShots"
-	}
-
-	if kmexist(yabumidir) = -1{
-		yabumidir = dirinfo(0x10026) +"\\yabumi\\yabumiuploader.exe"
-		availableyabumi = 1
-		if kmexist(yabumidir) = -1{
-			availableyabumi = 0
-			yabumidir = ""
-		}
-	}
-	WriteIni "Setting", "yabumidir", yabumidir
-	
-	if peek(hotkeystr,0) = 'A':hotkeycapalt=1
-	if peek(hotkeystr,1) = 'C':hotkeycapctrl=1
-	if peek(hotkeystr,2) = 'S':hotkeycapshift=1
-	if peek(hotkeystr,3) = 'W':hotkeycapwin=1
-	hotkeycapchar = strmid(hotkeystr,4,1)
-	
-	////////////////
-	if yubiwa = 0 & kantai = 0 : w = 382 : capx = 392
-	if yubiwa = 1 & kantai = 1 : w = 440 : capx = 360
-	if yubiwa = 1 & kantai = 0 : w = 408 : capx = 392
-	if yubiwa = 0 & kantai = 1 : w = 415 : capx = 360
-	if page = 0:h = 279
-	if page = 1:h = 315
-	if lvname = 1:w = 190: capx = 392:h = 279
-	capy = 154
-		
-	dd(0,0) = capx,capy,w,h
-	cellratio = 1.0*h/w
-	cellsize(0,0) = scrsize(0,0)/(cellnum(0,0)+1),round(cellratio*cellsize(0,0))
-	scrsize(1,0) = round(cellsize(1,0)* (cellnum(1,0)+1) )
-	AspectRatio(0) = 1.0*scrsize(1,0)/scrsize(0,0)
-	
-	sosuka = 1
-	tuika1 = 1
-	
-	if sosuka {
-		w = 460
-		h = 365
-	}
-	if sosu {
-		w = 230
-		h = 365	
-	}
-	if soka {
-		w = 460
-		h = 105
-	}
-	
-	capx = 327
-	capy = 103
-
-	dd(0,1) = capx,capy,w,h
-	cellratio = 1.0*h/w
-	cellsize(0,1) = scrsize(0,1)/(cellnum(0,1)+1),round(cellratio*cellsize(0,1))
-	scrsize(1,1) = round(cellsize(1,1)*(cellnum(1,1)+1) )
-	AspectRatio(1) = 1.0*scrsize(1,1)/scrsize(0,1)
-	///////////////////
-	chdir currentdir
-return
-		
-*inisave
-	
-	savelogtext = ""
-
-	if (yubiwa != 0) & (yubiwa != 1):yubiwa = 1
-	WriteIni "Setting", "yubiwa",yubiwa
-
-	if (kantai != 0) & (kantai != 1):kantai = 1
-	WriteIni "Setting", "kantai",kantai
-	
-	if (page != 0) & (page != 1):page = 0
-	WriteIni "Setting", "page",page
-
-	if (autosearch != 0) & (autosearch != 1):autosearch = 1
-	WriteIni "Setting", "autosearch",autosearch
-
-	if (hidename != 0) & (hidename != 1):hidename = 0
-	WriteIni "Setting", "hidename",hidename
-
-	if (namecut != 0) & (namecut != 1):namecut=0
-	WriteIni "Setting", "namecut",namecut
-	
-	if (frontrow != 0) & (frontrow != 1):frontrow=1
-	WriteIni "Setting", "frontrow",frontrow
-	
-	if (hidelog != 0) & (hidelog != 1):hidelog = 0
-	WriteIni "Setting", "hidelog",hidelog
-
-	if (yabumiautoupload != 0) & (yabumiautoupload != 1):yabumiautoupload=1
-	WriteIni "Setting", "yabumiautoupload",yabumiautoupload
-	
-	if (othergame != 0) & (othergame != 1):othergame = 1
-	WriteIni "Setting", "othergame",othergame
-	
-	if (dispcap != 0) & (dispcap != 1):dispcap=1
-	WriteIni "Setting", "dispcap",dispcap
-
-	if (hotkeycap != 0) & (hotkeycap != 1): hotkeycap = 1
-	WriteIni "Setting", "hotkeycap",hotkeycap
-
-	if (autoaddcaptcha != 0) & (autoaddcaptcha != 1):autoaddcaptcha=1
-	WriteIni "Setting", "autoaddcaptcha",autoaddcaptcha
-
-	if (jpgsave != 0) & (jpgsave != 1):jpgsave=0
-	WriteIni "Setting", "jpgsave",jpgsave
-	
-	if (jpgquality < 1) | (jpgquality > 100):jpgquality = 90
-	WriteIni "Setting", "jpgquality",jpgquality
-	
-	if (disableseqcap != 0) & (disableseqcap != 1):disableseqcap = 1
-	WriteIni "Setting", "disableseqcap",disableseqcap
-
-	if (timersec < 0) | (timersec > 999):timersec = 5
-	WriteIni "Setting", "timersec",timersec
-
-	if PathIsDirectory(listsavedir) {
-		WriteIni "Setting", "listsavedir", listsavedir
-	} else {
-		savelogtext += "Info - 一覧保存先が存在しないためデフォルトに変更しました\n"
-		listsavedir = dir_exe
-		WriteIni "Setting", "listsavedir", listsavedir
-		objprm listsdid,listsavedir
-	}
-	
-	if PathIsDirectory(sssavedir) {
-		WriteIni "Setting", "sssavedir",  sssavedir
-		if PathIsDirectory(getpath(sssavedir,32)+"intervalShots") = 0{
-			chdir getpath(sssavedir,32)
-			mkdir "IntervalShots"
-		}
-	} else {
-		savelogtext += "Info - SS保存先が存在しないためデフォルトに変更しました\n"
-		chdir dir_exe
-		if PathIsDirectory(dir_exe+"\\ScreenShots") = 0 {
-			mkdir "ScreenShots"
-		}
-		sssavedir = dir_exe+"\\ScreenShots"
-		WriteIni "Setting", "sssavedir", sssavedir
-		objprm sssdid,sssavedir
-	}
-
-	if kmexist(yabumidir) = -1{
-		yabumidir = dirinfo(0x10026) +"\\yabumi\\yabumiuploader.exe"
-		if kmexist(yabumidir) = -1{
-			availableyabumi = 0
-			yabumidir = ""
-			WriteIni "Setting", "yabumidir", yabumidir
-		} else {
-			availableyabumi = 1
-			WriteIni "Setting", "yabumidir", yabumidir
-		}
-	} else {
-		availableyabumi = 1
-		WriteIni "Setting", "yabumidir", yabumidir
-	}
-		
-	hotkeystr = ""
-		
-	if (hotkeycapalt + hotkeycapctrl + hotkeycapshift + hotkeycapwin) = 0{
-		savelogtext += "Info - ホットキーの設定が不適切です(1) 設定をデフォルトに変更しました\n"
-		hotkeycap = 0
-		hotkeycapalt = 1
-		hotkeycapctrl = 0
-		hotkeycapshift= 0
-		hotkeycapwin = 0
-	}
-	
-	if hotkeycapalt	= 1	:poke hotkeystr,0,'A':else:poke hotkeystr,0,95
-	if hotkeycapctrl = 1:poke hotkeystr,1,'C':else:poke hotkeystr,1,95
-	if hotkeycapshift= 1:poke hotkeystr,2,'S':else:poke hotkeystr,2,95
-	if hotkeycapwin	= 1	:poke hotkeystr,3,'W':else:poke hotkeystr,3,95
-	
-	if (65 <= peek(hotkeycapchar)) & (peek(hotkeycapchar) <= 90){
-		hotkeycode = peek(hotkeycapchar)
-		poke hotkeystr,4,hotkeycode
-	} else {
-		if (97 <= peek(hotkeycapchar)) & (peek(hotkeycapchar) <= 122){
-			hotkeycode = peek(hotkeycapchar)-32
-			hotkeycapchar = strf("%c",hotkeycode)
-			poke hotkeystr,4,hotkeycode
-		} else {
-			savelogtext += "Info - ホットキーの設定が不適切です(2) 設定をデフォルトに変更しました\n"
-			hotkeycode = 90
-			hotkeycapchar = strf("%c",hotkeycode)
-			poke hotkeystr,4,hotkeycode
-			hotkeycap = 0
-		}
-	}
-	
-	WriteIni "Setting", "hotkeystr", hotkeystr
-	
-	if (manualpos != 0) & (manualpos != 1):manualpos=0
-	WriteIni "Setting122", "manualpos",manualpos
-	
-	if (lvname != 0) & (lvname != 1):lvname=0
-	WriteIni "Setting122", "lvname",lvname
-	
-	if (rengoumode != 0) & (rengoumode != 1):rengoumode=0
-	WriteIni "Setting122", "rengoumode",rengoumode
-	
-	if (rengoumode != 0) & (rengoumode != 1):rengoumode=1
-	WriteIni "Setting122", "senden",senden
-	
-	if (tuika1 != 0) & (tuika1 != 1):tuika1=1
-	WriteIni "Setting122", "tuika1",tuika1
-	if (tuika2 != 0) & (tuika2 != 1):tuika2=0
-	WriteIni "Setting122", "tuika2",tuika2
-	if (tuika3 != 0) & (tuika3 != 1):tuika3=0
-	WriteIni "Setting122", "tuika3",tuika3
-	
-	if (sosuka != 0) & (sosuka != 1):sosuka=1
-	WriteIni "Setting122", "sosuka",sosuka
-	if (sosu != 0) & (sosu != 1):sosu=0
-	WriteIni "Setting122", "sosu",sosu
-	if (soka != 0) & (soka != 1):soka=0
-	WriteIni "Setting122", "soka",soka
-
-	sdim temp,256
-	temp = encstr(userdata)
-	WriteIni "Setting130", "Twi_userdata",temp
-	temp = encstr(ACCESS_TOKEN)
-	WriteIni "Setting130", "Twi_ACCESS_TOKEN",temp
-	temp = encstr(ACCESS_SECRET)
-	WriteIni "Setting130", "Twi_ACCESS_SECRET",temp
-	
-	if (enabletweetwindow != 0) & (enabletweetwindow != 1):enabletweetwindow=0
-	WriteIni "Setting130", "enabletweetwindow",enabletweetwindow
-	if (twijpg != 0) & (twijpg != 1):twijpg=0
-	WriteIni "Setting130", "twijpg",twijpg
-	if (tuika4 != 0) & (tuika4 != 1):tuika4=0
-	WriteIni "Setting130", "tuika4", tuika4
-	
-	if fontname = "":fontname = "ＭＳ　ゴシック"
-	WriteIni "Setting200", "fontname", fontname
-	if fontnum = "":fontnum = "ＭＳ　ゴシック"
-	WriteIni "Setting200", "fontnum", fontnum
-	if (fontsizename < 10) | ( 50 < fontsizename):fontsizename=34
-	WriteIni "Setting200", "fontsizename", fontsizename
-	if (fontsizenum < 10) | ( 50 < fontsizenum):fontsizenum=34
-	WriteIni "Setting200", "fontsizenum", fontsizenum
-	if fontcolornamestr = "":fontcolornamestr = "FF0000"
-	WriteIni "Setting200", "fontcolornamestr", fontcolornamestr
-	if fontcolornumstr = "":fontcolornumstr = "0000FF"
-	WriteIni "Setting200", "fontcolornumstr", fontcolornumstr
-	if FirstFleetName = "":FirstFleetName = "第一艦隊"
-	WriteIni "Setting200", "FirstFleetName", FirstFleetName
-	if SecondFleetName = "":SecondFleetName = "第二艦隊"
-	WriteIni "Setting200", "SecondFleetName", SecondFleetName
-	
-	fontcolorname = int("$"+fontcolornamestr)
-	fontcolornum = int("$"+fontcolornumstr)
-	
-	if (tuika1+tuika2+tuika3+tuika4) != 1{
-		tuika1 = 1
-		tuika2 = 0
-		tuika3 = 0
-		tuika4 = 0
-	}
-	
-	if (sosuka+sosu+sosk) != 1{
-		sosuka = 1
-		sosu = 0
-		soka = 0
-	}
-	
-	if savelogtext != ""{
-		savelogtext += "makelist.iniを保存しました"
-		dialog savelogtext
-	}
-	
-	chdir currentdir
 return
 
 *hotkeycapsetting
@@ -2422,217 +1793,13 @@ return
 	disinfo(1) = GetSystemMetrics(77)
 	disinfo(2) = GetSystemMetrics(78)
 	disinfo(3) = GetSystemMetrics(79)
-
+	
 	init_makelist disinfo
-
 	hdcScreen = CreateDC("DISPLAY", NULL, NULL, NULL)
-	
-return
-
-
-*twioauth
-	
-	gsel 0,-1
-	screen 18,175,300,2:title SOFTNAME
-	syscolor 15:boxf:color
-	font "メイリオ",13
-	objmode 2
-
-	pos 5,5
-	mes "ブラウザに表示された\nコードを入力し、\nOKを押してください\n"
-	
-	PIN = ""
-	input PIN,100,20
-	
-	button　gosub "OK",*twioauthok
-	
-	gsel 18,2
-
-	pos 5,120
-	mes "\n\n\n\nこの画面及びTwitter認証\nの部分はVer1.3では\nまだ不完全です\n手抜きでごめんなさいm(__)m"
-
-	address = getAuthorizeAddress()
-	if address != "Error"{
-		exec address,16
-	} else {
-		dialog "認証に失敗しました\nインターネットに繋がっているか確認しもう一度お試しください"
-		gsel 18,-1
-		gsel 0,1+frontrow
-	}
 
 return
 
-*twioauthok
-	
-	userdata = ""
-	ACCESS_TOKEN = ""
-	ACCESS_SECRET = ""
-	
-	publishAccessToken ACCESS_TOKEN,ACCESS_SECRET,userdata,PIN
-	if stat != 200{
-		dialog "Twitter認証に失敗しました\nもう一度お試しください"
-	}
 
-	gsel 18,-1
-	gsel 0,1+frontrow
-	
-return
-
-*twiinit
-
-	if ACCESS_TOKEN != "" & ACCESS_SECRET != ""{
-		setAccessToken ACCESS_TOKEN, ACCESS_SECRET
-		nid = ginfo(3)
-		gsel 0
-		logmessage = "Twitter連携が有効になっています"
-		objprm logid,logmessage
-		gsel nid
-	}
-
-return
-
-*TweetWindow
-	
-	nid = ginfo(3)
-
-	gsel 19
-	redraw 0
-	
-	objenable ttid,1
-	objenable tweetbid,1
-
-	syscolor 15
-	boxf
-
-	syscolor 16
-	pos 170,10
-	// 170 ,10 144x90
-	boxf 170,10,315,101
-	boxf 319,10,464,101
-	boxf 170,105,315,196
-	boxf 319,105,464,196
-	
-	syscolor 15
-	boxf 171,11,314,100
-	boxf 320,11,463,100
-	boxf 171,106,314,195
-	boxf 320,106,463,195
-	color
-	
-	xass = 171,320,171,320
-	yass = 11,11,106,106
-	
-	repeat 4
-		if PicStack(cnt) = "":break
-		if kmexist(PicStack(cnt)) < 1:break
-		buffer 21
-		picload PicStack(cnt)
-		gsel 19
-		pos xass(cnt),yass(cnt)
-		gzoom 144,90,21,0,0,800,480
-	loop
-	
-	repeat 4
-		gmode 2
-		pos xass(cnt),yass(cnt)
-		gcopy 7,0,50+twiOrder(cnt)*90,144,90
-	loop
-	
-	objprm ttid,tweettext
-	
-	gmode 0
-	redraw 1
-	gsel nid,0
-
-return
-
-*tweet_
-	
-	if ACCESS_TOKEN != ""{
-	
-		nid = ginfo(3)
-	
-		gsel 19
-	
-		objenable ttid,0
-		objenable tweetbid,0
-		await
-		
-		sdim mediaids,1024
-		sdim tempsdim,256,4
-	
-		count = 0
-		repeat 4
-			if twiOrder(cnt) = count+1 {
-				if picStack(cnt) != "" {
-					tempsdim(count) = picStack(cnt)
-					count++
-					continue 0
-				}
-			}
-		loop
-	
-		if twijpg & (jpgsave=0){
-			repeat count
-				buffer 21
-				picload tempsdim(cnt)
-				savenamed = strf("%s\\temp_%d.jpg",sssavedir,cnt)
-				gdiimagesave savenamed,jpgquality
-				if kmexist(savenamed) > 0{
-					tempsdim(cnt) = savenamed
-				}
-			loop
-		}
-	
-		
-		gsel 19
-		
-		dialog ""+tempsdim(0)
-		media_upload tempsdim,count,mediaids
-
-		if stat != 0{
-			dialog "画像のアップロードに失敗しました"
-		} else {
-			tweet tweettext,"",mediaids
-			if stat = 200{
-		
-				repeat 4
-					picStack(cnt) = ""
-				loop
-				tweettext = ""
-				twiOrder = 1,0,0,0
-				twiOrderCount = 1
-	
-			logmessage = "ツイートを投稿しました"
-
-			} else {
-				dialog "ツイートに失敗しました"
-			} 
-		}
-	
-		if twijpg & (jpgsave=0){
-			repeat count
-				if kmexist(savenamed) > 0{
-					delete tempsdim(cnt)
-				}
-			loop
-		}
-
-		objenable ttid,1
-		objenable tweetbid,1
-	
-		gsel 0
-		if mode != 3{
-			objprm logid,logmessage
-		}
-		gsel nid
-	} else {
-		dialog "先にオプションから認証してね"
-	}
-	
-	gosub *TweetWindow
-
-return
 *en_d
 	
 	if wparam = 1{
@@ -2645,10 +1812,9 @@ return
 	if wparam = 19{
 		gsel 19,-1
 		enabletweetwindow = 0
-		if mode = 0{
-			gsel 0
+		gsel 0
+		if mode != modeOptionNum{
 			objprm enabletweetwindowcid,0
-			await
 		}
 		return
 	}
@@ -2657,45 +1823,23 @@ return
 	
 	DragAcceptFiles hwnd1, 0
 	DragAcceptFiles hwnd0, 0
-	
+	DragAcceptFiles hwnd19, 0
+
 	if seqcapf = 1{
 		KillTimer hwnd0,timerID
 	}
-	gosub *inisave
+
 	if hotkeyset = 1 {
 		UnregisterHotKey hwnd0,HOTKEYID
 	}
+	
+	gosub *dataCheck
+	gosub *iniSave
+		
 	end
-	
-#defcfunc existblock int ebint1
-	
-	if tuika1 {
-		count = 0
-		repeat 6,(ebint1*6)
-			xcnt = (((cnt\(6*(cellnum(0,listmode)+1)/2))/6)*2)+(cnt\2)
-			ycnt = ((cnt/((cellnum(0,listmode)+1)*3))*3)+((cnt\6)/2)
-			title ""+xcnt+" "+ycnt
-			if data(xcnt,ycnt,listmode) >= 100:count++
-		loop
-	}
-	
-	if tuika2 {
-		count = 0
-		repeat 6,(ebint1*6)
-			xcnt = cnt\6
-			ycnt = cnt/6
-			if data(xcnt,ycnt,listmode) >= 100:count++
-		loop
-	}
-	
-	if tuika3 {
-		count = 0
-		repeat 6,(ebint1*6)
-			xcnt = cnt/6
-			ycnt = cnt\6
-			if data(xcnt,ycnt,listmode) >= 100:count++
-		loop
-	}
-	
-	if count = 0:return 0
-return 1
+
+
+#include "SubSource_iniFileOperation.hsp"
+#include "SubSource_TwitterOperation.hsp"
+#include "SubSource_DrawString.hsp"
+#include "SubSource_make.hsp"
