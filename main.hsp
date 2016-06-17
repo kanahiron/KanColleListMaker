@@ -1,11 +1,12 @@
 /*
 * SoftWareName(Jp)	: 艦これ一覧めいかー
 * SoftWareName(En)	: KanColleListMaker
-* Version			: 2.1
+* Version			: 2.1.0.7
 * Author			: kanahiron
 * License			: MIT
 * Copyright(C) 2014 kanahiron
 */
+
 
 #uselib "shlwapi.dll"
 #cfunc PathIsDirectory "PathIsDirectoryA" sptr
@@ -61,7 +62,7 @@
 #include "makelistmodule_Ver6_3.as"
 
 #pack "data2.png"
-#packopt name "艦これ一覧めいかー Ver2_1"
+#packopt name "艦これ一覧めいかー Ver2_1_0_7"
 #packopt hide 1
 
 #define CELLWMAX 8
@@ -69,7 +70,7 @@
 #define HOTKEYID	7789
 #define timerID		100
 #define ctype round(%1) int(strf("%%0.0f", %1))
-#define SOFTNAME "艦これ一覧めいかー Ver2.1"
+#define SOFTNAME "艦これ一覧めいかー Ver2.1.0.7"
 
 	onexit gosub *en_d
 
@@ -176,6 +177,16 @@
 	ACCESS_TOKEN = ""
 	ACCESS_SECRET = ""
 	
+	fontname = "ＭＳ　ゴシック"
+	fontnum = "ＭＳ　ゴシック"
+	fontsizename = 34
+	fontsizenum = 34
+	fontcolornamestr = "FF0000"
+	fontcolornumstr = "0000FF"
+
+	FirstFleetName = "第一艦隊"
+	SecondFleetName = "第二艦隊"
+	
 	tCupInit "KanColleListMaker", CONSUMER_KEY, CONSUMER_SECRET, 50
 	
 	scrsize(0,0) = limit(1358,210,round(0.66*maxscrwh(0))),scrsize(0,0)*aspectratio(0)
@@ -187,15 +198,17 @@
 	gosub *inisave
 	gosub *disinfoinit
 	
-	///
-	buffer 12,1010,340
-	string = "第一艦隊　 　1\n　　　　 　　2\n　　　　　 　3\n　　　　　　 4\n　　　　　 　5\n　　　　 　　6"
-	font "メイリオ",34,1
+	buffer 12,700,340
+	//screen 12,700,340
+
+	font fontname,fontsizename,1
 	mref BMSCR, 67
-	x = 10
-	y = 0
 	r = 0.1 * abs(BMSCR.49)
 	n = int(2.0 * M_PI * r)
+	
+	x = 10
+	y = 10
+	string = FirstFleetName
 	color 
 	boxf
 	color 255,255,255
@@ -208,12 +221,14 @@
 		pos xt+250, yt
 		mes string
 	loop
-	color 255,0,0
+	color ((fontcolorname&0x00FF0000)>>16),((fontcolorname&0x0000FF00)>>8),(fontcolorname&0x000000FF)
 	pos x, y
 	mes string
+	OSOWm = ginfo(15)
 
-	x = 510
-	string = "第二艦隊　 　1\n　　　　　 　2\n　　　 　　　3\n　　　 　　　4\n　　　　 　　5\n　　 　　　　6"
+	y = 110
+	x = 10
+	string = SecondFleetName
 	color 255,255,255
 	repeat n
 		rad = 2.0 * M_PI * cnt / n
@@ -224,18 +239,59 @@
 		pos xt+250, yt
 		mes string
 	loop
-	color 0,0,255
+	color ((fontcolornum&0x00FF0000)>>16),((fontcolornum&0x0000FF00)>>8),(fontcolornum&0x000000FF)
+	pos x, y
+	mes string
+
+	font fontnum,fontsizenum,1
+	mref BMSCR, 67
+	r = 0.1 * abs(BMSCR.49)
+	n = int(2.0 * M_PI * r)
+	
+	x = 510
+	y = 10
+	string = "1\n2\n3\n4\n5\n6"
+	color 255,255,255
+	repeat n
+		rad = 2.0 * M_PI * cnt / n
+		xt = x + int(r * cos(rad))
+		yt = y + int(r * sin(rad))
+		pos xt, yt
+		mes string
+		pos xt+50, yt
+		mes string
+	loop
+	color ((fontcolorname&0x00FF0000)>>16),((fontcolorname&0x0000FF00)>>8),(fontcolorname&0x000000FF)
+	pos x, y
+	mes string
+	OSOW = ginfo(15)
+
+	x = 610
+	y = 10
+	string = "1\n2\n3\n4\n5\n6"
+	color 255,255,255
+	repeat n
+		rad = 2.0 * M_PI * cnt / n
+		xt = x + int(r * cos(rad))
+		yt = y + int(r * sin(rad))
+		pos xt, yt
+		mes string
+		pos xt+50, yt
+		mes string
+	loop
+	color ((fontcolornum&0x00FF0000)>>16),((fontcolornum&0x0000FF00)>>8),(fontcolornum&0x000000FF)
 	pos x, y
 	mes string
 
 	font "メイリオ",15,1
 	mref BMSCR, 67
-	string = SOFTNAME
+	r = 0.1 * abs(BMSCR.49)
+	n = int(2.0 * M_PI * r)
 
 	x = 10
 	y = 310
-	r = 0.1 * abs(BMSCR.49)
-	n = int(2.0 * M_PI * r)
+	string = SOFTNAME
+	color 255,255,255
 	repeat n
 		rad = 2.0 * M_PI * cnt / n
 		xt = x + int(r * cos(rad))
@@ -1373,8 +1429,13 @@ return
 					xcnt = (cnt/6)*2+cnt\2
 					ycnt = (cnt\6)/2
 					if data(xcnt,ycnt,listmode) >= 100{
-						pos 205+w*xcnt,h*ycnt+5
-						gcopy 12,(cnt/6)*500,(cnt\6)*51,250,51
+						if ((ycnt == 0) & (xcnt\2 == 0)){
+							//艦隊名をはりはり
+							pos 205+w*xcnt,h*ycnt+5
+							gcopy 12,0,10+(xcnt/2)*100,250,OSOWm+10
+						}
+						pos 205+w*xcnt+220,h*ycnt+5
+						gcopy 12,500+((cnt/6)*100),10+(cnt\6)*OSOW,50,OSOW
 					}
 				loop
 			}
@@ -1405,8 +1466,13 @@ return
 					xcnt = (cnt/6)*3+cnt\3
 					ycnt = (cnt\6)/3
 					if data(xcnt,ycnt,listmode) >= 100{
-						pos 205+w*xcnt,h*ycnt+5
-						gcopy 12,(cnt/6)*500,(cnt\6)*51,250,51
+						if ((ycnt == 0) & (xcnt\3 == 0)){
+							//艦隊名をはりはり
+							pos 205+w*xcnt,h*ycnt+5
+							gcopy 12,0,10+(xcnt/3)*100,250,OSOWm+10
+						}
+						pos 205+w*xcnt+220,h*ycnt+5
+						gcopy 12,500+((cnt/6)*100),10+(cnt\6)*OSOW,50,OSOW
 					}
 				loop
 			}
@@ -1439,8 +1505,13 @@ return
 					xcnt = cnt\6
 					ycnt = cnt/6
 					if data(xcnt,ycnt,listmode) >= 100{
-						pos 205+w*xcnt,h*ycnt+5
-						gcopy 12,(cnt/6)*500,(cnt\6)*51,250,51
+						if (xcnt == 0){
+							//艦隊名をはりはり
+							pos 205+w*xcnt,h*ycnt+5
+							gcopy 12,0,10+ycnt*100,250,OSOWm+10
+						}
+						pos 205+w*xcnt+220,h*ycnt+5
+						gcopy 12,500+((cnt/6)*100),10+(cnt\6)*OSOW,50,OSOW
 					}
 				loop
 			}
@@ -1464,8 +1535,13 @@ return
 					xcnt = cnt/6
 					ycnt = cnt\6
 					if data(xcnt,ycnt,listmode) >= 100{
-						pos 205+w*xcnt,h*ycnt+5
-						gcopy 12,(cnt/6)*500,(cnt\6)*51,250,51
+						if (ycnt == 0){
+							//艦隊名をはりはり
+							pos 205+w*xcnt,h*ycnt+5
+							gcopy 12,0,10+xcnt*100,250,OSOWm+10
+						}
+						pos 205+w*xcnt+220,h*ycnt+5
+						gcopy 12,500+((cnt/6)*100),10+(cnt\6)*OSOW,50,OSOW
 					}
 				loop
 			}
@@ -1926,6 +2002,16 @@ return
 						enabletweetwindow=0
 						twijpg=0
 						tuika4=0
+	
+						[Setting200]
+						fontname = ＭＳ　ゴシック
+						fontnum = ＭＳ　ゴシック
+						fontsizename = 34
+						fontsizenum = 34
+						fontcolornamestr = FF0000
+						fontcolornumstr = 0000FF
+						FirstFleetName = 第一艦隊
+						SecondFleetName = 第二艦隊
 						"}
 
 		bsave (dir_exe+"\\makelist.ini"),settingstr,strlen(settingstr)+1024
@@ -1977,6 +2063,18 @@ return
 	GetIni "Setting130", "twijpg",twijpg
 	GetIni "Setting130", "tuika4", tuika4
 	
+	GetIni "Setting200", "fontname", fontname
+	GetIni "Setting200", "fontnum", fontnum
+	GetIni "Setting200", "fontsizename", fontsizename
+	GetIni "Setting200", "fontsizenum", fontsizenum
+	GetIni "Setting200", "fontcolornamestr", fontcolornamestr
+	GetIni "Setting200", "fontcolornumstr", fontcolornumstr
+	GetIni "Setting200", "FirstFleetName", FirstFleetName
+	GetIni "Setting200", "SecondFleetName", SecondFleetName
+	
+	fontcolorname = int("$"+fontcolornamestr)
+	fontcolornum = int("$"+fontcolornumstr)
+
 	if (tuika1+tuika2+tuika3+tuika4) != 1{
 		tuika1 = 1
 		tuika2 = 0
@@ -2240,6 +2338,26 @@ return
 	WriteIni "Setting130", "twijpg",twijpg
 	if (tuika4 != 0) & (tuika4 != 1):tuika4=0
 	WriteIni "Setting130", "tuika4", tuika4
+	
+	if fontname = "":fontname = "ＭＳ　ゴシック"
+	WriteIni "Setting200", "fontname", fontname
+	if fontnum = "":fontnum = "ＭＳ　ゴシック"
+	WriteIni "Setting200", "fontnum", fontnum
+	if (fontsizename < 10) | ( 50 < fontsizename):fontsizename=34
+	WriteIni "Setting200", "fontsizename", fontsizename
+	if (fontsizenum < 10) | ( 50 < fontsizenum):fontsizenum=34
+	WriteIni "Setting200", "fontsizenum", fontsizenum
+	if fontcolornamestr = "":fontcolornamestr = "FF0000"
+	WriteIni "Setting200", "fontcolornamestr", fontcolornamestr
+	if fontcolornumstr = "":fontcolornumstr = "0000FF"
+	WriteIni "Setting200", "fontcolornumstr", fontcolornumstr
+	if FirstFleetName = "":FirstFleetName = "第一艦隊"
+	WriteIni "Setting200", "FirstFleetName", FirstFleetName
+	if SecondFleetName = "":SecondFleetName = "第二艦隊"
+	WriteIni "Setting200", "SecondFleetName", SecondFleetName
+	
+	fontcolorname = int("$"+fontcolornamestr)
+	fontcolornum = int("$"+fontcolornumstr)
 	
 	if (tuika1+tuika2+tuika3+tuika4) != 1{
 		tuika1 = 1
