@@ -23,15 +23,26 @@
 	tate++
 	
 	if listmode = 0{
-		if yubiwa = 0 & kantai = 0 : w = 382 : capx = 392
-		if yubiwa = 1 & kantai = 1 : w = 440 : capx = 360
-		if yubiwa = 1 & kantai = 0 : w = 408 : capx = 392
-		if yubiwa = 0 & kantai = 1 : w = 415 : capx = 360
-		if page = 0:h = 279
-		if page = 1:h = 315
-		if lvname = 1:w = 190: capx = 392:h = 279
-		capy = 154
+
+		if ichiranMode1 {
+			if yubiwa = 0 & kantai = 0 : w = 382 : capx = 392
+			if yubiwa = 1 & kantai = 1 : w = 440 : capx = 360
+			if yubiwa = 1 & kantai = 0 : w = 408 : capx = 392
+			if yubiwa = 0 & kantai = 1 : w = 415 : capx = 360
+			if page = 0:h = 279
+			if page = 1:h = 315
+			if lvname = 1:w = 190: capx = 392:h = 279
+			capy = 154
+		}
+		if ichiranMode2 {
+			w = 473
+			h = 310
+			capx = 131
+			capy = 143
+		}
+
 	} 
+	
 	if listmode = 1{
 		if sosuka {
 			w = 460
@@ -57,10 +68,17 @@
 			capy = 0
 		}
 		if airStation {
-			w = 225
-			h = 358
-			capx = 575
-			capy = 109
+			if (airStationTab) { 
+				w = 225
+				h = 358
+				capx = 575
+				capy = 109
+			} else {
+				w = 225
+				h = 336
+				capx = 575
+				capy = 131
+			}
 		}
 	}
 

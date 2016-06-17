@@ -1,7 +1,7 @@
 /*
 * SoftWareName(Jp)	: 艦これ一覧めいかー
 * SoftWareName(En)	: KanColleListMaker
-* Version			: 2.6
+* Version			: FINAL
 * Author			: kanahiron
 * License			: MIT
 * Copyright(C) 2014 kanahiron
@@ -64,7 +64,7 @@
 #include "makelistmodule_Ver6_4.as"
 
 #pack "data2.png"
-#packopt name "艦これ一覧めいかー Ver2_6"
+#packopt name "艦これ一覧めいかー VerFINAL"
 #packopt hide 1
 #packopt orgpath 1
 
@@ -75,7 +75,7 @@
 #define klmver 26000
 #define WM_LBUTTONDOWN	0x0201
 #define ctype round(%1) int(strf("%%0.0f", %1))
-#define SOFTNAME "艦これ一覧めいかー Ver2.6"
+#define SOFTNAME "艦これ一覧めいかー VerFINAL"
 
 #define nidPush nidindex++:nidstack(nidindex) = ginfo(3)
 #define nidPop gsel nidstack(nidindex),0:nidindex--
@@ -339,8 +339,7 @@
 		gsel 19,1
 		gsel 0,1+frontrow
 	}
-
-	gosub *VerCheck
+	
 	stop
 
 *adummy
@@ -423,62 +422,88 @@ return
 *listchange
 
 	nidPush
+	gsel 0
+	
 	if mode = 1{
-	
-		gsel 0
-		lvnamef = lvname
+
+		sendmsg ichiranMode1Ch, $F2
+		ichiranMode1 = stat & 0x01
+		sendmsg ichiranMode2Ch, $F2
+		ichiranMode2 = stat & 0x01
+
+		if ichiranMode1 {
 		
-		w = 0
-		h = 0
-		capx = 0
-		capy = 0
-		cellratio = 0,0
-		sendmsg yubiwach, $F2
-		yubiwa = stat & 0x01
-		sendmsg kantaich, $F2
-		kantai = stat & 0x01
-		sendmsg pagech, $F2
-		page = stat & 0x01
-		sendmsg lvnamech, $F2
-		lvname = stat & 0x01
+			lvnamef = lvname
+			sendmsg yubiwach, $F2
+			yubiwa = stat & 0x01
+			sendmsg kantaich, $F2
+			kantai = stat & 0x01
+			sendmsg pagech, $F2
+			page = stat & 0x01
+			sendmsg lvnamech, $F2
+			lvname = stat & 0x01
+			
+			objenable lvnamecid,1
+			
+			if lvname = 1{
+				objenable yubiwacid,0
+				objenable kantaicid,0
+				objenable pagecid,0
+			} else {
+				objenable yubiwacid,1
+				objenable kantaicid,1
+				objenable pagecid,1
+			}
+			
+			if yubiwa = 0 & kantai = 0 : w = 382 : capx = 392
+			if yubiwa = 1 & kantai = 1 : w = 440 : capx = 360
+			if yubiwa = 1 & kantai = 0 : w = 408 : capx = 392
+			if yubiwa = 0 & kantai = 1 : w = 415 : capx = 360
+			if page = 0:h = 279
+			if page = 1:h = 315
+			if lvname = 1:w = 190: capx = 392:h = 279
+			capy = 154
+		
+			dd(0,0) = capx,capy,w,h
+			cellratio = 1.0*h/w
 	
-		if lvname = 1{
+			if lvname = 0{
+				if lvnamef = 1{
+					scrsize(0,0) = scrsizetemp(0)
+				}
+				cellsize(0,0) = scrsize(0,0)/(cellnum(0,0)+1),round(cellratio*cellsize(0,0))
+				scrsize(1,0) = round(cellsize(1,0)* (cellnum(1,0)+1) )
+				
+			} else {
+				if lvnamef = 0{
+					scrsizetemp(0,0)  = scrsize(0,0)
+					cellsize(1,0) = scrsize(1,0)/(cellnum(1,0)+1)
+					cellsize(0,0) = round(1.0*cellsize(0,0)/cellratio)
+					scrsize(0,0) = round(cellsize(0,0)* (cellnum(0,0)+1) )
+				}
+			}
+		}
+
+		if ichiranMode2 {
+
 			objenable yubiwacid,0
 			objenable kantaicid,0
 			objenable pagecid,0
-		} else {
-			objenable yubiwacid,1
-			objenable kantaicid,1
-			objenable pagecid,1
-		}
-		
-		if yubiwa = 0 & kantai = 0 : w = 382 : capx = 392
-		if yubiwa = 1 & kantai = 1 : w = 440 : capx = 360
-		if yubiwa = 1 & kantai = 0 : w = 408 : capx = 392
-		if yubiwa = 0 & kantai = 1 : w = 415 : capx = 360
-		if page = 0:h = 279
-		if page = 1:h = 315
-		if lvname = 1:w = 190: capx = 392:h = 279
-		capy = 154
-	
-		dd(0,0) = capx,capy,w,h
-		cellratio = 1.0*h/w
+			objenable lvnamecid,0
 
-		if lvname = 0{
-			if lvnamef = 1{
-				scrsize(0,0) = scrsizetemp(0)
-			}
+			w = 473
+			h = 310
+			capx = 131
+			capy = 143
+
+			dd(0,0) = capx,capy,w,h
+			cellratio = 1.0*h/w
+	
 			cellsize(0,0) = scrsize(0,0)/(cellnum(0,0)+1),round(cellratio*cellsize(0,0))
 			scrsize(1,0) = round(cellsize(1,0)* (cellnum(1,0)+1) )
 			
-		} else {
-			if lvnamef = 0{
-				scrsizetemp(0,0)  = scrsize(0,0)
-				cellsize(1,0) = scrsize(1,0)/(cellnum(1,0)+1)
-				cellsize(0,0) = round(1.0*cellsize(0,0)/cellratio)
-				scrsize(0,0) = round(cellsize(0,0)* (cellnum(0,0)+1) )
-			}
 		}
+		
 		AspectRatio(0,0) = 1.0*scrsize(1,0)/scrsize(0,0)
 		gsel 1
 		width scrsize(0,0),scrsize(1,0)
@@ -567,6 +592,14 @@ return
 		directLink = stat & 0x01
 		sendmsg airStationCh, $F2
 		airStation = stat & 0x01
+		sendmsg airStationTabCh, $F2
+		airStationTab = stat & 0x01
+
+		if directLink {
+			objenable airStationTabCId,0
+		} else {
+			objenable airStationTabCId,1
+		}
 
 		if directLink{
 			w = 800
@@ -576,10 +609,17 @@ return
 			cellnum(0,2) = 6,4
 		}
 		if airStation {
-			w = 225
-			h = 358
-			capx = 575
-			capy = 109
+			if (airStationTab) { 
+				w = 225
+				h = 358
+				capx = 575
+				capy = 109
+			} else {
+				w = 225
+				h = 336
+				capx = 575
+				capy = 131
+			}
 			cellnum(0,2) = 2,0
 		}
 		
@@ -787,37 +827,60 @@ return
 	if listmode = 0{
 	
 		width 175
-		
+		mesy_ = mesy
 		pos 5,mesy
-		chkbox "指輪も範囲に入れる",yubiwa:mesy+=20
+		chkbox "一覧作成モード1",ichiranMode1:mesy+=100
+		ichiranMode1Cid = stat
+		ichiranMode1Ch = objinfo_hwnd(ichiranMode1CId)
+		SetWindowLong ichiranMode1Ch, -16, $50000009 | $20000
+
+		pos 5,mesy
+		chkbox "一覧作成モード2",ichiranMode2:mesy+=20
+		ichiranMode2Cid = stat
+		ichiranMode2Ch = objinfo_hwnd(ichiranMode2CId)
+		sendmsg ichiranMode2Ch, $F4, $9
+
+		mesy_+=20
+		pos 22,mesy_
+		chkbox "指輪も入れる",yubiwa:mesy_+=20
 		yubiwacid = stat
 		yubiwach = objinfo_hwnd(yubiwacid)
 		
-		pos 5,mesy
-		chkbox "所属艦隊も範囲に入れる",kantai:mesy+=20
+		pos 22,mesy_
+		chkbox "所属艦隊も入れる",kantai:mesy_+=20
 		kantaicid = stat
 		kantaich = objinfo_hwnd(kantaicid)
 		
-		pos 5,mesy
-		chkbox "ページ数も範囲に入れる",page:mesy+=20
+		pos 22,mesy_
+		chkbox "ページ数も入れる",page:mesy_+=20
 		pagecid = stat
 		pagech = objinfo_hwnd(pagecid)
-		pos 5,mesy
-		
-		chkbox "レベルと艦名のみにする",lvname:mesy+=20
+
+		pos 17,mesy_
+		chkbox "レベルと艦名のみ",lvname:mesy_+=20
 		lvnamecid = stat
 		lvnamech = objinfo_hwnd(lvnamecid)
-	
-		if lvname = 1{
+
+		if ichiranMode1 {
+			objenable lvnamecid,1
+			if lvname = 1{
+				objenable yubiwacid,0
+				objenable kantaicid,0
+				objenable pagecid,0
+			} else {
+				objenable yubiwacid,1
+				objenable kantaicid,1
+				objenable pagecid,1
+			}
+
+		}
+
+		if ichiranMode2 {
 			objenable yubiwacid,0
 			objenable kantaicid,0
 			objenable pagecid,0
-		} else {
-			objenable yubiwacid,1
-			objenable kantaicid,1
-			objenable pagecid,1
+			objenable lvnamecid,0
 		}
-		
 	}
 	if listmode = 1{
 	
@@ -950,6 +1013,11 @@ return
 		airStationCId = stat
 		airStationCh = objinfo_hwnd(airStationCId)
 		sendmsg airStationCh, $F4, $9
+		
+		pos 22,mesy
+		chkbox "タブまで入れる",airStationTab:mesy+=20
+		airStationTabCId = stat
+		airStationTabCh = objinfo_hwnd(airStationTabCId)
 
 
 	}
@@ -1128,18 +1196,8 @@ return
 	mesbox yabumidir,350,45,5,259:mesy+=45
 	yabumiid = stat
 	
-	pos 0,mesy
-	objsize 350,20
-	button gosub "Amazonほしい物リスト",*Amazon:mesy+=20
-	//http://www.amazon.co.jp/wishlist/181BGDSFXZC6M/?sort=priority
-	
 	width 350,mesy
 
-return
-
-*Amazon
-	dialog "Amazonのほしい物リストだよ！\nぜひポチって支援してね！！！",2,"でちでち"
-	if stat = 6:exec "http://www.amazon.co.jp/wishlist/181BGDSFXZC6M/?sort=priority",16
 return
 
 
@@ -1184,7 +1242,7 @@ return
 	
 	} else {
 		gsel 0
-		logmessage = "座標自動取得中です"
+		logmessage = "自動座標取得中です"
 		objprm logid,logmessage:await 
 
 		getkancollewindowposauto2 10,sscap,20
@@ -1926,4 +1984,3 @@ return
 #include "SubSource_TwitterOperation.hsp"
 #include "SubSource_DrawString.hsp"
 #include "SubSource_make.hsp"
-#include "SubSource_VersionCheck.hsp"

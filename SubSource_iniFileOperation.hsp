@@ -67,7 +67,11 @@
 						addOrderNum=1
 						directLink=1
 						airStation=0
-						autoVersionCheck=1
+
+						[SettingFINAL]
+						airStationTab=1
+						ichiranMode1=1
+						ichiranMode2=0
 						"}
 
 		bsave (dir_exe+"\\makelist.ini"),settingstr,strlen(settingstr)+1024
@@ -143,7 +147,10 @@
 
 	GetIni "Setting250", "airStation", airStation
 	GetIni "Setting250", "directLink", directLink
-	GetIni "Setting250", "autoVersionCheck", autoVersionCheck
+
+	GetIni "SettingFINAL", "airStationTab",airStationTab
+	GetIni "SettingFINAL", "ichiranMode1",ichiranMode1
+	GetIni "SettingFINAL", "ichiranMode2",ichiranMode2
 	
 	if strmid(hotkeystr,0,1) = "A":hotkeycapalt	= 1
 	if strmid(hotkeystr,1,1) = "C":hotkeycapctrl = 1
@@ -202,8 +209,9 @@ return
 	if FourthFleetName = "":FourthFleetName = "“¹’†Žx‰‡"
 	if (fleetPunctuation != 0) & (fleetPunctuation != 1):fleetPunctuation=1
 	if (addOrderNum != 0) & (addOrderNum != 1):addOrderNum=1
-	if (autoVersionCheck != 0) & (autoVersionCheck != 1):autoVersionCheck=1
-	
+
+	if (airStationTab != 0) & (airStationTab != 1):airStationTab=1
+
 	fontColorFirstFleet = int("$"+fontcolorFirstFleetstr)
 	fontColorSecondFleet = int("$"+fontcolorSecondFleetstr)
 	fontColorThreadFleet = int("$"+fontcolorThreadFleetstr)
@@ -301,17 +309,30 @@ return
 		dialog savelogtext
 		savelogtext = ""
 	}
+
+	if (ichiranMode1 + ichiranMode2) != 1{
+		ichiranMode1 = 1
+		ichiranMode2 = 0
+	}
 	
 	
 	////////////////
-	if yubiwa = 0 & kantai = 0 : w = 382 : capx = 392
-	if yubiwa = 1 & kantai = 1 : w = 440 : capx = 360
-	if yubiwa = 1 & kantai = 0 : w = 408 : capx = 392
-	if yubiwa = 0 & kantai = 1 : w = 415 : capx = 360
-	if page = 0:h = 279
-	if page = 1:h = 315
-	if lvname = 1:w = 190: capx = 392:h = 279
-	capy = 154
+	if ichiranMode1 {
+		if yubiwa = 0 & kantai = 0 : w = 382 : capx = 392
+		if yubiwa = 1 & kantai = 1 : w = 440 : capx = 360
+		if yubiwa = 1 & kantai = 0 : w = 408 : capx = 392
+		if yubiwa = 0 & kantai = 1 : w = 415 : capx = 360
+		if page = 0:h = 279
+		if page = 1:h = 315
+		if lvname = 1:w = 190: capx = 392:h = 279
+		capy = 154
+	}
+	if ichiranMode2 {
+		w = 473
+		h = 310
+		capx = 131
+		capy = 143
+	}
 		
 	dd(0,0) = capx,capy,w,h
 	cellratio = 1.0*h/w
@@ -351,10 +372,17 @@ return
 		cellnum(0,2) = 6,4
 	}
 	if airStation {
-		w = 225
-		h = 358
-		capx = 575
-		capy = 109
+		if (airStationTab) { 
+			w = 225
+			h = 358
+			capx = 575
+			capy = 109
+		} else {
+			w = 225
+			h = 336
+			capx = 575
+			capy = 131
+		}
 		cellnum(0,2) = 2,0
 	}
 		
@@ -436,7 +464,10 @@ return
 	WriteIni "Setting250", "addOrderNum", addOrderNum
 	WriteIni "Setting250", "airStation", airStation
 	WriteIni "Setting250", "directLink", directLink
-	WriteIni "Setting250", "autoVersionCheck",autoVersionCheck
+	
+	WriteIni "SettingFINAL", "airStationTab",airStationTab
+	WriteIni "SettingFINAL", "ichiranMode1",ichiranMode1
+	WriteIni "SettingFINAL", "ichiranMode2",ichiranMode2
 	
 return
 

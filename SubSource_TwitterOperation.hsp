@@ -158,10 +158,6 @@ return
 		pos 150,130
 		buttonÅ@gosub "OK",*twioauthok
 	
-		pos 0,220
-		objsize 448,30
-		button gosub "AmazonÇŸÇµÇ¢ï®ÉäÉXÉg",*Amazon:mesy+=20
-	
 		nidpop
 	}
 
