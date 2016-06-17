@@ -1,3 +1,13 @@
+/*
+* SoftWareName(Jp)	: ˆê——ì‚é‚æI(ŠÍ‚±‚êˆê——‚ß‚¢‚©[)
+* SoftWareName(En)	: None(KanColleListMaker)
+* Version			: 1.1
+* Author			: kanahiron
+* License			: MIT
+* Copyright(C) 2014 kanahiron
+*/
+
+
 #include "kmodule.as"
 #include "gdiimagesave.as"
 #include "makelistmodule_Ver3.as"
@@ -22,9 +32,7 @@
 #func ScreenToClient "ScreenToClient" int ,int
 #func ChildWindowFromPoint "ChildWindowFromPoint" int ,int
 
-#define WM_DROPFILES	0x0233
 #define NULL		0
-#define SRCCOPY		0x00CC0020
 #define CAPTUREBLT	0x40000000
 
 #packopt name "ˆê——ì‚é‚æI Ver1_1"
