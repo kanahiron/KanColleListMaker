@@ -1,7 +1,7 @@
 /*
 * SoftWareName(Jp)	: 艦これ一覧めいかー
 * SoftWareName(En)	: KanColleListMaker
-* Version			: 1.2.5
+* Version			: 1.2.5.3
 * Author			: kanahiron
 * License			: MIT
 * Copyright(C) 2014 kanahiron
@@ -56,10 +56,10 @@
 #include "exdialog.as"
 
 ;/*
-#include "makelistmodule_Ver6_1.as"
+#include "makelistmodule_Ver6_3.as"
 
-#pack "data.png"
-#packopt name "艦これ一覧めいかー Ver1_2_5"
+#pack "data2.png"
+#packopt name "艦これ一覧めいかー Ver1_2_5_3"
 #packopt hide 1
 
 #define CELLWMAX 8
@@ -67,6 +67,7 @@
 #define HOTKEYID	7789
 #define timerID		100
 #define ctype round(%1) int(strf("%%0.0f", %1))
+#define SOFTNAME "艦これ一覧めいかー Ver1.2.5.3"
 
 	onexit gosub *en_d
 
@@ -160,7 +161,6 @@
 	intervalsavedir = ""
 	savenamepath = ""
 	
-	
 	scrsize(0,0) = limit(1358,210,round(0.66*maxscrwh(0))),scrsize(0,0)*aspectratio(0)
 	scrsize(0,1) = limit(1120,250,round(0.66*maxscrwh(0))),scrsize(0,1)*aspectratio(1)
 	scrsizetemp(0,0)  = scrsize(0,0),scrsize(1,0)
@@ -170,13 +170,13 @@
 	gosub *inisave
 	gosub *disinfoinit
 	
-	buffer 12,610,360
-	font "メイリオ",34,1
+	///
+	buffer 12,1010,340
 	string = "第一艦隊　 　1\n　　　　 　　2\n　　　　　 　3\n　　　　　　 4\n　　　　　 　5\n　　　　 　　6"
+	font "メイリオ",34,1
 	mref BMSCR, 67
-	x = ginfo_cx+10
-	y = ginfo_cy
-	y2 = y
+	x = 10
+	y = 0
 	r = 0.1 * abs(BMSCR.49)
 	n = int(2.0 * M_PI * r)
 	color 
@@ -184,43 +184,56 @@
 	color 255,255,255
 	repeat n
 		rad = 2.0 * M_PI * cnt / n
-		pos x + int(r * cos(rad)), y + int(r * sin(rad))
+		xt = x + int(r * cos(rad))
+		yt = y + int(r * sin(rad))
+		pos xt, yt
+		mes string
+		pos xt+250, yt
 		mes string
 	loop
 	color 255,0,0
 	pos x, y
 	mes string
-	x = ginfo_cx+310
-	y = y2
+
+	x = ginfo_cx+500
 	string = "第二艦隊　 　1\n　　　　　 　2\n　　　 　　　3\n　　　 　　　4\n　　　　 　　5\n　　 　　　　6"
 	color 255,255,255
 	repeat n
 		rad = 2.0 * M_PI * cnt / n
-		pos x + int(r * cos(rad)), y + int(r * sin(rad))
+		xt = x + int(r * cos(rad))
+		yt = y + int(r * sin(rad))
+		pos xt, yt
+		mes string
+		pos xt+250, yt
 		mes string
 	loop
 	color 0,0,255
 	pos x, y
 	mes string
-	
+
 	font "メイリオ",15,1
-	string = "艦これ一覧めいかー Ver1.2.5"
 	mref BMSCR, 67
+	string = SOFTNAME
+
 	x = 10
 	y = 310
-	y2 = y
 	r = 0.1 * abs(BMSCR.49)
 	n = int(2.0 * M_PI * r)
-	color 245,240,220
 	repeat n
 		rad = 2.0 * M_PI * cnt / n
-		pos x + int(r * cos(rad)), y + int(r * sin(rad))
+		xt = x + int(r * cos(rad))
+		yt = y + int(r * sin(rad))
+		pos xt, yt
+		color 245,240,220
+		mes string
+		pos xt+230, yt
+		color 255,255,255
 		mes string
 	loop
 	color 170,60,70
 	pos x, y
 	mes string
-	
+
 	buffer 16,640,150
 	syscolor 16
 	font "メイリオ",25,1
@@ -228,6 +241,8 @@
 	mes "またはホットキー(Altキー＋Zキー同時押し)で
 	mes "                                         画像を追加してください"
 	mes "セルの画像はウィンドウ外にドラッグで消去できます"
+	
+	screen 17,,,2
 	
 	buffer 10,disinfo(2),disinfo(3)
 	
@@ -260,7 +275,7 @@
 
 	//画像読み込み用
 	buffer 7
-	picload "data.png"
+	picload "data2.png"
 	
 	;//キャプチャ作成用
 	buffer 8
@@ -272,14 +287,14 @@
 	//縮小処理用
 	buffer 3,maxscrwh(0)/5,maxscrwh(1)/3
 	
-	screen 0,350,600:title "艦これ一覧めいかー Ver1.2.5"
+	screen 0,350,600,2:title SOFTNAME
 	hwnd0 = hwnd
 	DragAcceptFiles hwnd0, 0
 	oncmd gosub *OnDropFiles ,WM_DROPFILES
 	oncmd gosub *setmode ,WM_COMMAND
 	oncmd gosub *hotkey ,WM_HOTKEY
 	oncmd gosub *sscaptcha,0x0113
-	
+	gsel listsize1
 	syscolor 15:boxf:color
 	font "メイリオ",13
 	objmode 2
@@ -294,6 +309,8 @@
 	
 	gosub *ssmode
 	gosub *hotkeycapsetting
+	
+	gsel 0,1+frontrow
 
 	if autosearch {
 		gsel 0,-1
@@ -301,7 +318,7 @@
 		gosub *sssetting
 		gsel 0,1+frontrow
 	}
-	
+
 	listsize1 = 1
 	listsize2 = 0
 	stop
@@ -861,6 +878,8 @@ return
 	pos 5,mesy
 	chkbox "＊一覧モードでSSを自動追加する",autoaddcaptcha:mesy+=20
 	pos 5,mesy
+	;chkbox "＊自動追加の場合はSSを保存しない",autoaddnonsave:mesy+=20
+	pos 5,mesy
 	chkbox "jpgで保存する",jpgsave:mesy+=20
 	
 	pos 5,mesy
@@ -930,19 +949,22 @@ return
 		gsel 11,-1
 		pos 0,0
 		gcopy 10,0,0,disinfo(2),disinfo(3)
+		color 128,128,128
+		repeat (disinfo(3) / 120)+1
+			ycnt = cnt
+			repeat (disinfo(2) / 500)+2
+				pos (cnt*600)+(ycnt*70)-800,ycnt*200
+				mes "艦これ一覧めいかー　座標取得中"
+			loop
+		loop
 		color 255,255,255
 		boxf abs(disinfo(0)),abs(disinfo(1)),abs(disinfo(0))+970,abs(disinfo(1))+45
 		color
 		pos abs(disinfo(0))+5,abs(disinfo(1))+2
 		mes "艦これの画面を覆うようにドラッグしてください Escキーでキャンセル"
-		gsel 11,2
-		MoveWindow hwnd11,disinfo(0),disinfo(1),disinfo(2),disinfo(3),1
-		LoadCursor 0, 32515
-		SetClassLong hwnd, -12, stat
-		getkancollewindowposmanual 10,sscap,9
-		gsel 11,-1
-		LoadCursor 0, 32512
-		SetClassLong hwnd, -12, stat
+
+		getkancollewindowposmanual 10,sscap,9,11,17
+	
 	} else {
 		gsel 0
 		logmessage = "座標自動取得中です"
@@ -1014,10 +1036,10 @@ return
 	
 	if hotkeyset = 1 & availablecap = 1 {
 		gsel 0,0
-		title "*艦これ一覧めいかー Ver1.2.5"
+		title "*"+SOFTNAME
 	} else {
 		gsel 0,0
-		title "艦これ一覧めいかー Ver1.2.5"
+		title SOFTNAME
 	}
 
 
@@ -1050,9 +1072,9 @@ return
 	if (homeport(5,20) = 1) & (hidename = 1) & (sscapwh(0) = 800) & (sscapwh(1) = 480) {
 
 		pos 113,0
-		gcopy 7,0,0,163,22
+		gcopy 7,0,0,163,24
 		pos 395,10
-		gcopy 7,0,22,100,16
+		gcopy 7,0,24,100,16
 
 		if (namecut = 1) {
 			buffer 5,800,450
@@ -1062,6 +1084,11 @@ return
 		}
 	
 	}
+	
+	;if (autoaddnonsave & autoaddcaptcha & hotkeyaddf) {
+	;	oncmd 1
+	;	return
+	;}
 	
 	gsel 5
 	savename = strf("kancolle_%04d%02d%02d-%02d%02d%02d%03d%s",gettime(0),gettime(1),gettime(3),gettime(4),gettime(5),gettime(6),gettime(7),savekind(jpgsave))
@@ -1074,8 +1101,6 @@ return
 		gdiimagesave getpath(sssavedir,32)+"IntervalShots\\"+intervalsavedir+"\\" +savename,jpgquality
 	}
 	
-	;intervalsavedir
-	
 	gsel 0
 	
 	if kmexist(savenamepath) <= 0{
@@ -1083,8 +1108,10 @@ return
 		objprm logid,logmessage
 	} else {
 		logmessage = savename+"を保存しました"
-		objprm logid,logmessage
-		if dispcap & (mode=0){
+		if mode != 3{
+			objprm logid,logmessage
+		}	
+		if dispcap & (mode = 0){
 			pos 0,dispcapy
 			gzoom 175,105,5,0,0,sscapwh(0),sscapwh(1),1
 		}
@@ -1239,12 +1266,8 @@ return
 		repeat cellnum(0,listmode)+1
 			if data(cnt,ycnt,listmode) >= 100{
 				pos cnt*w,ycnt*h
-				gsel data(cnt,ycnt,listmode)
-				if ginfo(13) = 450:cutf = 1
-				gsel 2
-				gcopy data(cnt,ycnt,listmode),capx,capy-(cutf*30),w,h 
+				gcopy data(cnt,ycnt,listmode),capx,capy,w,h 
 				drawcount++
-				cutf = 0
 			}
 		loop
 	loop
@@ -1253,19 +1276,19 @@ return
 		if tuika1 {
 			if sosuka | soka{
 				gsel 2
-				gmode 2
+				gmode 7
 				repeat 12
 					xcnt = (cnt/6)*2+cnt\2
 					ycnt = (cnt\6)/2
 					if data(xcnt,ycnt,listmode) >= 100{
 						pos 205+w*xcnt,h*ycnt+5
-						gcopy 12,10+((cnt/6)*310),(cnt\6)*51,310,51
+						gcopy 12,10+((cnt/6)*500),(cnt\6)*51,250,51
 					}
 				loop
 			}
 	
 			buffer 15,w*yoko+(3*((yoko/2)+(yoko\2)-1)),h*tate+(3*(tate/4))
-	
+			gmode 0
 			pos 0,0
 			gcopy 2,0,0,w*2,h*tate
 			pos w*2+3,0
@@ -1285,18 +1308,19 @@ return
 	
 			if sosuka | soka {
 				gsel 2
-				gmode 2
+				gmode 7
 				repeat 12
 					xcnt = cnt\6
 					ycnt = cnt/6
 					if data(xcnt,ycnt,listmode) >= 100{
 						pos 205+w*xcnt,h*ycnt+5
-						gcopy 12,10+((cnt/6)*310),(cnt\6)*51,310,51
+						gcopy 12,10+((cnt/6)*500),(cnt\6)*51,250,51
 					}
 				loop
 			}
 		
 			buffer 15,w*yoko,h*tate+(3*(tate-1))
+			gmode 0
 			color 32,32,192
 			boxf
 			
@@ -1309,18 +1333,19 @@ return
 	
 			if sosuka | soka {
 				gsel 2
-				gmode 2
+				gmode 7
 				repeat 12
 					xcnt = cnt/6
 					ycnt = cnt\6
 					if data(xcnt,ycnt,listmode) >= 100{
 						pos 205+w*xcnt,h*ycnt+5
-						gcopy 12,10+((cnt/6)*310),(cnt\6)*51,310,51
+						gcopy 12,10+((cnt/6)*500),(cnt\6)*51,250,51
 					}
 				loop
 			}
 		
 			buffer 15,w*yoko+(3*(yoko-1)),h*tate
+			gmode 0
 			color 32,32,192
 			boxf
 			
@@ -1332,9 +1357,9 @@ return
 	}
 	
 	if senden & (listmode=1) & (sosuka|soka){
-		gmode 2
-		pos ginfo_winx-225,ginfo_winy-30
-		gcopy 12,10,310,220,30
+		gmode 7
+		pos ginfo_winx-225,ginfo_winy-18
+		gcopy 12,10,310,230,30
 	}
 		
 	savename = ""
@@ -1382,18 +1407,19 @@ return
 	if peek(dropfile,0) = '"' : getstr dropfile, dropfile, 1, '"'
 	
 	if ImgF_GetFormat(dropfile) = 0{
-		dropfile = 0
+		dropf = 0
 		gsel 1
 		return
 	}
-	
-	dropf = 1
+
 	addfilename = dropfile
+	dropf = 1
 	gosub *addcaptcha
 	oncmd 1
 return
 
 *addcaptcha
+	
 	oncmd 0
 	gsel 1,0
 	
@@ -1441,7 +1467,6 @@ return
 		
 	}
 	
-	dropwindowid = -1
 	dropf = 0
 
 	repeat (CELLWMAX*CELLHMAX*2)
@@ -1453,22 +1478,40 @@ return
 	loop
 	
 	data(dmxy(0),dmxy(1),listmode) = bufid
-	ImgF_GetPicSize addfilename,picx,picy
 	
-	if (picx != 480) | (picy != 450){
+	;if ((autoaddnonsave = 0) & ( hotkeyaddf = 0)){
+		ImgF_GetPicSize addfilename,picx,picy
+	;} else {
+	;	picx = sscapwh(0)
+	;	picy = sscapwh(1)
+	;}
+	
+	if (picx != 480) & (picy != 450){
 		buffer bufid,limit(picx,800,picx),limit(picy,480,picy)
-		ImgF_PicloadEx addfilename,1
+		;if ((autoaddnonsave = 0) & ( hotkeyaddf = 0)) {
+			ImgF_PicloadEx addfilename,1
+		;} else {
+		;	gcopy 5,0,0,picx,picy
+		;}
 		gzoom 800,480,bufid,0,0,picx,picy,1
 	} else {
 		if picy = 480{
 			buffer bufid,800,480
 			pos 0,0
-			ImgF_PicloadEx addfilename,1
+			;if ((autoaddnonsave = 0) & ( hotkeyaddf = 0)) {
+				ImgF_PicloadEx addfilename,1
+			;} else {
+			;	gcopy 5,0,0,picx,picy
+			;}
 		}
 		if picy = 450{
-			buffer bufid,800,450
+			buffer bufid,800,480
 			pos 0,30
-			ImgF_PicloadEx addfilename,1
+			;if ((autoaddnonsave = 0) & ( hotkeyaddf = 0)) {
+				ImgF_PicloadEx addfilename,1
+			;} else {
+			;	gcopy 5,0,0,picx,picy
+			;}
 		}
 	}
 
@@ -1482,6 +1525,7 @@ return
 	gsel 1
 
 	addfilename = ""
+	hotkeyaddf = 0
 	oncmd 1
 return
 
@@ -1593,12 +1637,13 @@ return
 //ホットキー――――――――――――――――――――――――――――――――――
 *hotkey
 	oncmd 0
+	nid = ginfo(3)
 	
 	if (wparam = HOTKEYID) & (availablecap = 1){
 
+		;if (autoaddcaptcha & autoaddnonsave) :hotkeyaddf = 1
 		gosub *sscaptcha
 		if (mode = 1 | mode = 2) {
-
 			if autoaddcaptcha{
 				addfilename = sssavedir +"\\"+ savename
 				gosub *addcaptcha
@@ -1606,7 +1651,7 @@ return
 		}
 		await 16
 	}
-
+	gsel nid
 	oncmd 1
 return
 
@@ -2084,10 +2129,10 @@ return
 
 	if hotkeyset = 1 & availablecap = 1 {
 		gsel 0,0
-		title "*艦これ一覧めいかー Ver1.2.5"
+		title "*"+SOFTNAME
 	} else {
 		gsel 0,0
-		title "艦これ一覧めいかー Ver1.2.5"
+		title SOFTNAME
 	}
 	
 return

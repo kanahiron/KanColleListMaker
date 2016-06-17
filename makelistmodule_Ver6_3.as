@@ -61,7 +61,7 @@ return
 #global
 
 
-//////
+/*
 #ifndef getkancollewindowposauto_C
 #module O72620
 #uselib "kernel32.dll"
@@ -102,8 +102,47 @@ return
 #global
 O72620_constructor
 #endif
-/////////////////
-
+;*/////////////////
+#ifndef getkancollewindowposauto_C
+#module R4HBGC
+#uselib "kernel32.dll"
+#func VirtualAllocR4HBGC "VirtualAlloc" int, int, int, int
+#func VirtualFreeR4HBGC "VirtualFree" int, int, int
+#define NULL                   0x00000000
+#define PAGE_EXECUTE_READWRITE 0x00000040
+#define MEM_COMMIT             0x00001000
+#define MEM_RESERVE            0x00002000
+#define MEM_DECOMMIT           0x00004000
+#define MEM_RELEASE            0x00008000
+#deffunc R4HBGC_destructor onexit
+	if(NULL != getkancollewindowposauto_C_ptr) {
+		VirtualFreeR4HBGC getkancollewindowposauto_C_ptr, 184, MEM_DECOMMIT
+		VirtualFreeR4HBGC getkancollewindowposauto_C_ptr, 0, MEM_RELEASE
+		getkancollewindowposauto_C_ptr = NULL
+	}
+	return
+#deffunc R4HBGC_constructor
+	R4HBGC_destructor
+	VirtualAllocR4HBGC NULL, 184, MEM_RESERVE, PAGE_EXECUTE_READWRITE
+	VirtualAllocR4HBGC stat, 184, MEM_COMMIT, PAGE_EXECUTE_READWRITE
+	getkancollewindowposauto_C_ptr    = stat
+	dupptr getkancollewindowposauto_C_bin, stat, 184, vartype("int")
+	getkancollewindowposauto_C_bin.0  = $6C8B5553, $C0331024, $57DB3356, $840FED85, $00000094, $1424748B
+	getkancollewindowposauto_C_bin.6  = $1C24548B, $0024648D, $819E0C8B, $FFFFFFE1, $750A3B00, $9E348D72
+	getkancollewindowposauto_C_bin.12 = $830CC283, $03BF04C6, $EB000000, $00498D03, $E1810E8B, $00FFFFFF
+	getkancollewindowposauto_C_bin.18 = $75F84A3B, $4E8B4001, $FFE18104, $3B00FFFF, $0175FC4A, $084E8B40
+	getkancollewindowposauto_C_bin.24 = $FFFFE181, $0A3B00FF, $8B400175, $E1810C4E, $00FFFFFF, $75044A3B
+	getkancollewindowposauto_C_bin.30 = $4E8B4001, $FFE18110, $3B00FFFF, $0175084A, $14C68340, $4F14C283
+	getkancollewindowposauto_C_bin.36 = $F883AE75, $8B19740F, $8B142474, $431C2454, $820FDD3B, $FFFFFF78
+	getkancollewindowposauto_C_bin.42 = $835D5E5F, $C35BFFC8, $8B5D5E5F, $00C35BC3
+	return
+#define global getkancollewindowposauto_C(%1, %2, %3) \
+	prm@R4HBGC = varptr(%1), %2, varptr(%3):\
+	mref value@R4HBGC, 64:\
+	value@R4HBGC = callfunc(prm@R4HBGC, getkancollewindowposauto_C_ptr@R4HBGC, 3)
+#global
+R4HBGC_constructor
+#endif
 
 #module makelistmodule
 
@@ -174,19 +213,31 @@ return 1
 	gsel imageid
 	sw = ginfo(12)
 	sh = ginfo(13)
+	;logmes ""+sw+" "+sh
 	
-	buffer bufid,sw,sh
+	buffer bufid,sw,sh;:title "a"
+	
 	chgbm 32
+	
 	gcopy imageid,0,0,sw,sh
 	mref vram,66
 	
+	
 	gsel nid
+	
+	getkancollewindowposauto_C vram,sw*sh,homeportdata
+	if stat != -1{
+		//homeportdata 33,106
+		sscap(0) = (stat\sw)+disinfo(0)-33,((sh-1)-stat/sw)+disinfo(1)-106
+		sscap(2) = sscap(0)+800,sscap(1)+480	
+		return 0
+	}
 
 	getkancollewindowposauto_C vram,sw*sh,resultdata
 	if stat != -1{
 		//resultdata 0,122
 		sscap(0) = (stat\sw)+disinfo(0)-0,((sh-1)-stat/sw)+disinfo(1)-122
-		sscap(2) = sscap(0)+800,sscap(1)+480	
+		sscap(2) = sscap(0)+800,sscap(1)+480
 		return 0
 	}
 	
@@ -198,13 +249,7 @@ return 1
 		return 0
 	}
 
-	getkancollewindowposauto_C vram,sw*sh,homeportdata
-	if stat != -1{
-		//homeportdata 33,106
-		sscap(0) = (stat\sw)+disinfo(0)-33,((sh-1)-stat/sw)+disinfo(1)-106
-		sscap(2) = sscap(0)+800,sscap(1)+480	
-		return 0
-	}
+
 
 return -1
 
@@ -343,16 +388,23 @@ return
 	
 	
 	
-#deffunc getkancollewindowposmanual int imageid1,array sscap,int imageid3
+#deffunc getkancollewindowposmanual int imageid1,array sscap,int imageid3,int imageid4,int imageid5
 
 	nid = ginfo(3)
 	tsscap(0) = 0,0,0,0
+	sscap(0) = 0,0,0,0
 	mxy(0) = 0,0
 	mxy_(0) = 0,0
 	mwh = 0,0
 	cliflag = 0
 	ccolor(0) = 0,0,0
-	
+
+	gsel imageid4,2 //背景
+	imagehwnd4 = hwnd
+	MoveWindow imagehwnd4,disinfo(0),disinfo(1),disinfo(2),disinfo(3),1
+	LoadCursor 0, 32515
+	SetClassLong imagehwnd4, -12, stat
+
 	gsel imageid3,-1
 	imagehwnd3 = hwnd 
 	MoveWindow imagehwnd3,0,0,0,0,0
@@ -394,11 +446,95 @@ return
 			
 		if (sti = 0 & cliflag = 1){
 			cliflag = 0
-			dialog "この位置で決定しますか？",2,"確認"
-			if stat = 6{
-				gsel imageid3,-1
-				break
+	
+			//
+			gsel imageid3,-1
+			gsel imageid4
+			LoadCursor 0, 32512
+			SetClassLong imagehwnd4, -12, stat
+			gsel imageid4,-1
+	
+			////////////////////////////////////////
+			gsel imageid1
+		
+			tsscap(0) = mxy(0) - disinfo(0)
+			tsscap(1) = mxy(1) - disinfo(1)
+			tsscap(2) = mxy(0) + mwh(0) - disinfo(0)
+			tsscap(3) = mxy(1) + mwh(1) - disinfo(1)
+
+			pget tsscap(0),tsscap(1)+mwh(1)/2
+			ccolor(0) = ginfo_r ,ginfo_g, ginfo_b
+			repeat mwh(0)/2,1
+				ccnt = cnt
+				pget tsscap(0)+cnt,tsscap(1)+mwh(1)/2
+				if (ccolor(0) != ginfo_r) | (ccolor(1) != ginfo_g) | (ccolor(2) != ginfo_b) {
+					sscap(0) = tsscap(0)+cnt + disinfo(0)
+					break
+				}
+			loop
+
+			pget tsscap(2),tsscap(3)-mwh(1)/2
+			ccolor(0) = ginfo_r ,ginfo_g, ginfo_b
+			repeat mwh(0)/2,1
+				ccnt = cnt
+				pget tsscap(2)-cnt,tsscap(3)-mwh(1)/2
+				if (ccolor(0) != ginfo_r) | (ccolor(1) != ginfo_g) | (ccolor(2) != ginfo_b) {
+					sscap(2) = tsscap(2)-cnt + disinfo(0)+1
+					break
+				}
+			loop
+
+			pget tsscap(0)+mwh(0)/2,tsscap(1)
+			ccolor(0) = ginfo_r ,ginfo_g, ginfo_b
+			repeat mwh(1)/2
+				ccnt = cnt
+				pget tsscap(0)+mwh(0)/2,tsscap(1)+cnt
+				if (ccolor(0) != ginfo_r) | (ccolor(1) != ginfo_g) | (ccolor(2) != ginfo_b) {
+					sscap(1) = tsscap(1)+cnt + disinfo(1)
+					break
+				}
+			loop
+
+			pget tsscap(2)-mwh(0)/2,tsscap(3)
+			ccolor(0) = ginfo_r ,ginfo_g, ginfo_b
+			repeat mwh(1)/2
+				ccnt = cnt
+				pget tsscap(2)-mwh(0)/2,tsscap(3)-cnt
+				if (ccolor(0) != ginfo_r) | (ccolor(1) != ginfo_g) | (ccolor(2) != ginfo_b) {
+					sscap(3) = tsscap(3)-cnt+1 + disinfo(1)
+					break
+				}
+			loop
+			/////////////////////
+	
+			sscapwh(0) = sscap(2)-sscap(0),sscap(3)-sscap(1)
+			if sscapwh(0) >= 99 | sscapwh(1) >= 59{
+				screen  imageid5,sscapwh(0),sscapwh(1),,(ginfo(20)-sscapwh(0))/2,(ginfo(21)-sscapwh(1))/2
+				gsel imageid5,1
+				title "抽出結果"
+				gcopy imageid1,sscap(0)-disinfo(0),sscap(1)-disinfo(1),sscapwh(0),sscapwh(1)
+				
+				dialog "正しく取得できていますか？",2,"確認"
+				if stat = 6{
+					gsel imageid3,-1
+					break
+				}
+			} else {
+				dialog "取得に失敗しました\n再度選択しますか？",2,"確認"
+				if stat = 7{
+					gsel imageid3,-1
+					break
+				}
 			}
+	
+			gsel imageid4,2
+			MoveWindow imagehwnd4,disinfo(0),disinfo(1),disinfo(2),disinfo(3),1
+			LoadCursor 0, 32515
+			SetClassLong imagehwnd4, -12, stat
+			gsel imageid5,-1
+			
+			tsscap(0) = 0,0,0,0
+			sscap(0) = 0,0,0,0
 			mxy(0) = 0,0
 			mxy_(0) = 0,0
 			mwh = 0,0
@@ -406,110 +542,25 @@ return
 		}
 			
 		if (sti = 128){
+			gsel imageid3,-1
+			gsel imageid4
+			LoadCursor 0, 32512
+			SetClassLong imagehwnd4, -12, stat
+			gsel imageid4,-1
 			break
 		}
 			
 		redraw 1
 		await 16
 	loop
-	
-	gsel imageid1
 
-	/*
-	;dialog ""+mxy(0) +"  "+ginfo(0)+"\n"+mxy(1) +"  "+ginfo(1)
-	if ginfo(0) > mxy(0) {
-		;dialog "真x"
-		tsscap(0) = mxy(0) - disinfo(0)
-		tsscap(2) = mxy(0) + mwh(0) - disinfo(0)
-	} else {
-		tsscap(0) = ginfo(0) - disinfo(0)
-		tsscap(2) = ginfo(0) + mwh(0) - disinfo(0)
-	}
-	
-	if mxy(1) < ginfo(1){
-		;dialog "真y"
-		tsscap(1) = mxy(1) - disinfo(1)
-		tsscap(3) = mxy(1) + mwh(1) - disinfo(1)
-	} else {
-		tsscap(1) = ginfo(1) - disinfo(1)
-		tsscap(3) = ginfo(1) + mwh(1) - disinfo(1)
-	}
-	
-	dialog ""+mwh(0)+"  "+mwh(1)+"\n"+""+tsscap(0)+"  "+tsscap(1)+"\n"+tsscap(2) +"  "+tsscap(3)
-	;*/
-	;/*
-	
-	
-	;gsel 11,-1
-	tsscap(0) = mxy(0) - disinfo(0)
-	tsscap(1) = mxy(1) - disinfo(1)
-	tsscap(2) = mxy(0) + mwh(0) - disinfo(0)
-	tsscap(3) = mxy(1) + mwh(1) - disinfo(1)
-	
-	;dialog ""+mwh(0)+"  "+mwh(1)+"\n"+""+tsscap(0)+"  "+tsscap(1)+"\n"+tsscap(2) +"  "+tsscap(3)
-	
-	;*/
-	
-	;dialog ""+tsscap(0)+"  "+tsscap(1)+"\n"+tsscap(2)+"  "+tsscap(3)
-	;dialog strf("%d %d %d %d",tsscap(0),tsscap(1),tsscap(2),tsscap(3))
-	
-	;dialog ""+ccolor(0)+" "+ccolor(1)+" "+ccolor(2)+" "
-
-
-	// 上
-	pget tsscap(0),tsscap(1)+mwh(1)/2
-	ccolor(0) = ginfo_r ,ginfo_g, ginfo_b
-	repeat mwh(0)/2,1
-		ccnt = cnt
-		pget tsscap(0)+cnt,tsscap(1)+mwh(1)/2
-		if (ccolor(0) != ginfo_r) | (ccolor(1) != ginfo_g) | (ccolor(2) != ginfo_b) {
-			sscap(0) = tsscap(0)+cnt + disinfo(0)
-			break
-		}
-	loop
-
-	//右
-	pget tsscap(2),tsscap(3)-mwh(1)/2
-	ccolor(0) = ginfo_r ,ginfo_g, ginfo_b
-	repeat mwh(0)/2,1
-		ccnt = cnt
-		pget tsscap(2)-cnt,tsscap(3)-mwh(1)/2
-		if (ccolor(0) != ginfo_r) | (ccolor(1) != ginfo_g) | (ccolor(2) != ginfo_b) {
-			sscap(2) = tsscap(2)-cnt + disinfo(0)+1
-			break
-		}
-	loop
-	
-	//左
-	pget tsscap(0)+mwh(0)/2,tsscap(1)
-	ccolor(0) = ginfo_r ,ginfo_g, ginfo_b
-	repeat mwh(1)/2
-		ccnt = cnt
-		pget tsscap(0)+mwh(0)/2,tsscap(1)+cnt
-		if (ccolor(0) != ginfo_r) | (ccolor(1) != ginfo_g) | (ccolor(2) != ginfo_b) {
-			sscap(1) = tsscap(1)+cnt + disinfo(1)
-			break
-		}
-	loop
-	
-	//下から上
-	pget tsscap(2)-mwh(0)/2,tsscap(3)
-	ccolor(0) = ginfo_r ,ginfo_g, ginfo_b
-	repeat mwh(1)/2
-		ccnt = cnt
-		pget tsscap(2)-mwh(0)/2,tsscap(3)-cnt
-		if (ccolor(0) != ginfo_r) | (ccolor(1) != ginfo_g) | (ccolor(2) != ginfo_b) {
-			sscap(3) = tsscap(3)-cnt+1 + disinfo(1)
-			break
-		}
-	loop
-	
+	gsel imageid5,-1
 	gsel nid
 	
 return
 
-
-#defcfunc getbufid
+	
+;#defcfunc getbufid
 
 #global
 
